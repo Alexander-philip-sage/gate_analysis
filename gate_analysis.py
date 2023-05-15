@@ -1,3 +1,24 @@
+import os
+import glob
+import datetime
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import time
+from collections import Counter
+import random
+from typing import List, Tuple
+from scipy.spatial import distance
+#from scipy.signal import resample
+from scipy.signal import correlate, find_peaks, butter, sosfilt
+from scipy.interpolate import interp1d
+from scipy.stats import shapiro, ttest_rel, wilcoxon
+import statsmodels.api as sm
+from collections import defaultdict
+import pickle
+from poincare import poincare
+
+
 RIGHT_AVY_HEADER = 'Angular Velocity Y (rad/s).2'
 LEFT_AVY_HEADER = 'Angular Velocity Y (rad/s).3'
 COLUMNS_TO_GRAPH = ['Acceleration Y (m/s^2)',  'Angular Velocity Y (rad/s)',##right thigh 
@@ -30,29 +51,10 @@ for d in tmp:
    COLUMNS_BY_SENSOR.append({'sensor':d['sensor'], 'right':d['right'].replace('Y','X'), 'left':d['left'].replace('Y','X')})
    COLUMNS_BY_SENSOR.append({'sensor':d['sensor'], 'right':d['right'].replace('Y','Z'), 'left':d['left'].replace('Y','Z')})   
 
-DATA_DIR = 'raw_data_2023.01.31'#'Text_File/Master_Data--TD_1-30_CSVFiles/Subjects_1-30-inw1_through_osw1'
+DATA_DIR = os.path.join(r"C:\Users\sage\Documents\adult\deep\raw_data_2023.01.31-20230510T012044Z-001\raw_data_2023.01.31")#'Text_File/Master_Data--TD_1-30_CSVFiles/Subjects_1-30-inw1_through_osw1'
 GATE_CROSSING = -0.3
 FREQUENCY = 128
 
-import os
-import glob
-import datetime
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-import time
-from collections import Counter
-import random
-from typing import List, Tuple
-from scipy.spatial import distance
-#from scipy.signal import resample
-from scipy.signal import correlate, find_peaks, butter, sosfilt
-from scipy.interpolate import interp1d
-from scipy.stats import shapiro, ttest_rel, wilcoxon
-import statsmodels.api as sm
-from collections import defaultdict
-import pickle
-from poincare import poincare
 
 def extract_trial_data(filename, verbose=False):
   end_part = filename.split('_')[1].replace('.csv','')
@@ -94,6 +96,7 @@ def check_indoor_and_outdoor(metadata):
 def load_metadata(PACE, DATA_DIR):
   ##load all data files
   gate_files = [os.path.basename(x) for x in glob.glob(os.path.join(DATA_DIR,"*.csv"))]
+  assert len(gate_files)>0
   metadata_list = []
   for file in gate_files:
     subjectID, inout, pace, trial, timestamp = extract_trial_data(file, verbose=False)
@@ -2181,7 +2184,7 @@ def run_everything():
     metadata=load_metadata(PACE, DATA_DIR)
     print("paces found", metadata['pace'].unique())
     print("metadata took", (datetime.datetime.now()-start).total_seconds(), "to run")  
-
+    assert len(metadata['pace'].unique())==1, "paces"+str(metadata['pace'].unique())+" rows "+str(len(metadata))
     start = datetime.datetime.now()
     data_lookup = {}
     for filename in metadata['filename']:
