@@ -1,3 +1,14 @@
+import pyhrv
+import pyhrv.nonlinear as nl
+import biosppy
+#from biosppy.signals.ecg import ecg
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+print("pyhrv package version",pyhrv.__version__)
+print("biosppy package version",biosppy.__version__)
+
 def poincare(nni=None,
 			 rpeaks=None,
 			 show=True,

@@ -49,20 +49,10 @@ from scipy.spatial import distance
 from scipy.signal import correlate, find_peaks, butter, sosfilt
 from scipy.interpolate import interp1d
 from scipy.stats import shapiro, ttest_rel, wilcoxon
-! pip install statsmodels
 import statsmodels.api as sm
 from collections import defaultdict
 import pickle
-
-!pip install pyhrv
-import pyhrv
 from poincare import poincare
-import pyhrv.nonlinear as nl
-import biosppy
-from biosppy.signals.ecg import ecg
-import matplotlib as mpl
-print("pyhrv package version",pyhrv.__version__)
-print("biosppy package version",biosppy.__version__)
 
 def extract_trial_data(filename, verbose=False):
   end_part = filename.split('_')[1].replace('.csv','')
@@ -403,7 +393,7 @@ def graphing_gate_crossing_thresholds(stats_df: pd.core.frame.DataFrame, save_di
       ax[i].set_ylabel("gate size (data points)")
       title = column_to_graph+ ' '+COLUMNS_TO_AREA[column_to_graph]
       _= ax[i].set_title( title+ ' ' + inout)     
-      fig.savefig(os.path.join(save_dir_gate_lengths,title.replace(os.path.sep, '-')+'.png'))
+      fig.savefig(os.path.join(save_dir_gate_lengths,title.replace("/", '-')+'.png'))
 
 def stats_gate_lengths_by_file(metadata,data_lookup,  df_cols: List[str], save_dir_gate_lengths: str, fname_gate_length_file: str = "per_file", MAX_STD: float = 2, zero_crossing_lookup: dict =None):
   '''for each of the two main sensors, create a csv with the gate length 
@@ -414,10 +404,10 @@ def stats_gate_lengths_by_file(metadata,data_lookup,  df_cols: List[str], save_d
     filter_to_gate_thresh[filename] = {}
   print("gate crossing used", GATE_CROSSING)
   if not zero_crossing_lookup:
-    zero_crossing_lookup=calc_all_gate_crossings(metadata, gate_crossing = GATE_CROSSING)
+    zero_crossing_lookup=calc_all_gate_crossings(metadata,data_lookup, gate_crossing = GATE_CROSSING)
   for sensor_cols in [RIGHT_AVY_HEADER, LEFT_AVY_HEADER]:
     df_per_file = pd.DataFrame([], columns =df_cols )
-    per_filename =fname_gate_length_file+'_'+ sensor_cols.replace(os.path.sep, '-')+".csv"  
+    per_filename =fname_gate_length_file+'_'+ sensor_cols.replace("/", '-')+".csv"  
     for i, inout in enumerate(['indoors', 'outdoors']):
       for x in metadata[metadata['inout']==inout].groupby(by=['subjectID', 'pace']):
         df_trials=x[1]
@@ -429,7 +419,9 @@ def stats_gate_lengths_by_file(metadata,data_lookup,  df_cols: List[str], save_d
           filter_to_gate_thresh[filename][sensor_cols] = (avg-MAX_STD*std, avg+MAX_STD*std)
           df_per_file = pd.concat([df_per_file, pd.DataFrame([row], columns=df_cols)])
     df_per_file.sort_values('std',inplace=True, ignore_index=True )
-    df_per_file.to_csv(os.path.join(save_dir_gate_lengths,per_filename), index=False)
+    save_fname = os.path.join(save_dir_gate_lengths,per_filename)
+    print("saving to", save_fname)
+    df_per_file.to_csv(save_fname, index=False)
   print("saving file", fname_gate_length_file, " with gate length stats per file")
   return df_per_file, filter_to_gate_thresh
 
@@ -619,7 +611,7 @@ def aggregate_single_subject(data_lookup, metadata: pd.core.frame.DataFrame, zer
   to combine different trials, filter on 'subjectID', 'pace', 'inout', 
   if more than one row exists, concatenate the data from the rows'''
   pace = metadata['pace']
-  assert len(metadata['pace'].unique())==1
+  assert len(metadata['pace'].unique())==1, "paces"+str(metadata['pace'].unique())
   where_cond = ((metadata['subjectID']==subjectID)&(metadata['inout']==inout))
   records = metadata[where_cond]
   #print('analyzing file(s) ', records.values)
@@ -665,7 +657,7 @@ def graph_randomly_subject_sensor(metadata, data_lookup, zero_crossing_lookup):
   _= ax.set_title("subject " + str(subjectID) + " " +column_to_graph+ ' '+COLUMNS_TO_AREA[column_to_graph] + ' ' + inout) 
 
 def each_subject_one_sensor(save_dir, data_lookup, metadata, zero_crossing_lookup, column_to_graph, inout, local_dir):
-  assert len(metadata['pace'].unique())==1
+  assert len(metadata['pace'].unique())==1, "paces"+str(metadata['pace'].unique())
   for subjectID in  metadata['subjectID'].unique():
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(7.5,5))
     filename = local_dir + "_"+str(subjectID)+".png"
@@ -681,7 +673,7 @@ def each_subject_one_sensor(save_dir, data_lookup, metadata, zero_crossing_looku
     plt.close()
 def inout_each_subject(save_dir, data_lookup, metadata, zero_crossing_lookup, column_to_graph):
   for i, inout in enumerate(['indoors', 'outdoors']):
-    local_dir = column_to_graph.replace(os.path.sep, '-') + '_'+COLUMNS_TO_AREA[column_to_graph]+"_"+inout
+    local_dir = column_to_graph.replace("/", '-') + '_'+COLUMNS_TO_AREA[column_to_graph]+"_"+inout
     local_path = os.path.join(save_dir, local_dir)
     if not os.path.exists(local_path):
       os.mkdir(local_path)
@@ -707,7 +699,7 @@ def save_sensor_data(save_dir, data_lookup, metadata, zero_crossing_lookup, colu
     df_sensor_subject = pd.concat([df_sensor_subject,row ])
     ax.plot(avg, label=str(subjectID))
   _= ax.set_title(column_to_graph+ ' '+COLUMNS_TO_AREA[column_to_graph] + ' ' + inout) 
-  filename = column_to_graph.replace(os.path.sep, '-').replace(' ','_') + '_' + COLUMNS_TO_AREA[column_to_graph] + '_' + inout+'.csv'
+  filename = column_to_graph.replace("/", '-').replace(' ','_') + '_' + COLUMNS_TO_AREA[column_to_graph] + '_' + inout+'.csv'
   df_sensor_subject.to_csv(os.path.join(save_dir,filename), index=False)
   fig.savefig(os.path.join(save_dir,filename.replace('.csv', '.png')))
   plt.close()
@@ -757,9 +749,9 @@ def add_data_gate_peak_valley_swing(sensor, metadata, data_lookup, zero_crossing
   data.append(row )
 
 def gate_peak_valley_swing_save_data(columns_pkvgs, save_dir, sensor, metadata, data_lookup, zero_crossing_lookup ):
-  assert len(metadata['pace'].unique())==1
+  assert len(metadata['pace'].unique())==1, "paces"+str(metadata['pace'].unique())
   pace=metadata['pace'].unique()[0]
-  df_filename = sensor.replace(os.path.sep, '-')+'_'+pace
+  df_filename = sensor.replace("/", '-')+'_'+pace
   data = []
   leg = COLUMNS_TO_LEG[sensor]
   area = COLUMNS_TO_AREA[sensor]
@@ -793,7 +785,7 @@ def gate_peak_valley_swing(metadata, data_lookup, zero_crossing_lookup, SAVE_DIR
 
 
 def get_filenames_single_subject(metadata, subjectID, inout):
-  assert len(metadata['pace'].unique())==1
+  assert len(metadata['pace'].unique())==1, "paces"+str(metadata['pace'].unique())
   where_cond = ((metadata['subjectID']==subjectID)&(metadata['inout']==inout))
   records = metadata[where_cond]
   return records.filename.values
@@ -1011,7 +1003,7 @@ def graph_sensors_combined_subjects_trials(save_dir, data_lookup, metadata, zero
       ax[i].fill_between(np.arange(0,100), avg-std, avg+std, alpha=0.4, color='gray')
       title = column_to_graph+ ' '+COLUMNS_TO_AREA[column_to_graph]
       _= ax[i].set_title(title + ' ' + inout)
-    fig.savefig(os.path.join(save_dir,title.replace(os.path.sep, '-')+'.png'))  
+    fig.savefig(os.path.join(save_dir,title.replace("/", '-')+'.png'))  
 
 def combined_subjects_trials_signal_stats(data_lookup, metadata, zero_crossing_lookup, save_dir):
   print("all values presented are done by analyzing a list of size ~9,198. Where each element in the list is a gate profile. Meaning the average min is the average of ~9,198 minimum values")
@@ -1130,8 +1122,8 @@ def graph_aggregate_subjects_trials_legs(save_dir, data_lookup, metadata: pd.cor
       #ax[i].fill_between(np.arange(0,100), avg-std, avg+std, alpha=0.4, color='gray')
 
       #ax[i].set_title(inout+" "+"mean"+" " +sensor_name)
-    fig.savefig(os.path.join(save_dir,title.replace(os.path.sep, '-')+'.png'))
-    fig2.savefig(os.path.join(save_dir,title2.replace(os.path.sep, '-')+'.png'))
+    fig.savefig(os.path.join(save_dir,title.replace("/", '-')+'.png'))
+    fig2.savefig(os.path.join(save_dir,title2.replace("/", '-')+'.png'))
   return combined_legs
 
 
@@ -1143,7 +1135,7 @@ def cadence_per_subject(save_dir,metadata, zero_crossing_lookup, add_dir='stats_
   elif leg=='left':
     sensor=LEFT_AVY_HEADER
   df_cadence = pd.DataFrame()
-  assert len(metadata['pace'].unique())==1
+  assert len(metadata['pace'].unique())==1, "paces"+str(metadata['pace'].unique())
   for subjectID in  metadata['subjectID'].unique():
     for inout in ['outdoors', 'indoors']:
       where_cond = ((metadata['subjectID']==subjectID)&(metadata['inout']==inout))
@@ -1159,7 +1151,7 @@ def cadence_per_subject(save_dir,metadata, zero_crossing_lookup, add_dir='stats_
       row = {"sensor":sensor, "leg":leg, "subjectID": subjectID, 'inout':inout,
              "cadence_avg_step_p_minute":cmean,"cadence_std":cstd,"cadence_max":cmax,"cadence_min":cmin  }
       df_cadence = pd.concat([df_cadence, pd.DataFrame([row])])
-  df_cadence.to_csv(os.path.join(save_dir, "per_subject_"+sensor.replace(os.path.sep, "-").replace(" ", '')+'_'+leg+".csv"))
+  df_cadence.to_csv(os.path.join(save_dir, "per_subject_"+sensor.replace("/", "-").replace(" ", '')+'_'+leg+".csv"))
   return df_cadence
 
 def hist_cadence():
@@ -1220,10 +1212,10 @@ def line_plot_cadence():
     #fig.savefig(os.path.join(save_dir, title+'.png')) 
 
 
-def cadence_remove_outlier():
+def cadence_remove_outlier(base_dir):
   outliers = set()
   for speed in ['slow', 'normal','fast']:
-    lookup_dir = os.path.join("Analysis",speed, 'stats_of_gate_lengths')
+    lookup_dir = os.path.join(base_dir,speed, 'stats_of_gate_lengths')
     filename = glob.glob(os.path.join(lookup_dir,"per_subject_*.csv"))[0]
     print("looking at file", filename)
     df_cadence=pd.read_csv(filename)
@@ -1242,7 +1234,7 @@ def cadence_remove_outlier():
           outliers.add(subj) 
 
       print(inout, speed, round(np.array(new_signal).mean(),2))
-  with open(os.path.join("Analysis", 'cadence','outliers.pickle'), 'wb')as fileobj:
+  with open(os.path.join(base_dir, 'cadence_outliers.pickle'), 'wb')as fileobj:
     pickle.dump(outliers,fileobj)
   return outliers
 
@@ -1287,7 +1279,7 @@ def graph_poincare_per_leg(data_lookup, metadata, zero_crossing_lookup, sensor, 
   ''' for single sensor, for indoors and out, for each subject do poincare on the
   avg signal '''
   area=COLUMNS_TO_AREA[sensor]
-  save_dir = os.path.join(save_dir,sensor.replace(os.path.sep, "-").replace(" ", '')+'_'+area.replace(' ',"_"))
+  save_dir = os.path.join(save_dir,sensor.replace("/", "-").replace(" ", '')+'_'+area.replace(' ',"_"))
   if not os.path.exists(save_dir):
     os.mkdir(save_dir)
   data_poincare=[]
@@ -1297,7 +1289,7 @@ def graph_poincare_per_leg(data_lookup, metadata, zero_crossing_lookup, sensor, 
       all_gates = aggregate_single_subject(data_lookup, metadata, zero_crossing_lookup, sensor, inout , subjectID)
       avg =all_gates.mean(axis=0)
       title = "{} {} {} subjectID: {}".format(sensor,area, inout,subjectID)
-      figname = "{}_{}_{}_{}.png".format(sensor.replace(os.path.sep, "-"),area, inout,subjectID)
+      figname = "{}_{}_{}_{}.png".format(sensor.replace("/", "-"),area, inout,subjectID)
       results = poincare(avg, title=title, show=False)
       fig = results['poincare_plot']
       columns = ['sensor','area','inout', 'subjectID', 'sd1', 'sd2', 'sd_ratio', 'ellipse_area']
@@ -1314,7 +1306,7 @@ def graph_poincare_per_leg(data_lookup, metadata, zero_crossing_lookup, sensor, 
 def graph_poincare_comb_leg_per_sensor(combined_legs, sensor, save_dir_m, ylim=None, xlim=None):
   ''' for single sensor - combined across legs, for indoors and out, aggregate 
   across all subjects do poincare on the avg signal '''
-  save_dir = os.path.join(save_dir_m,sensor.replace(os.path.sep, "-").replace(" ", '').replace("^",'-'))
+  save_dir = os.path.join(save_dir_m,sensor.replace("/", "-").replace(" ", '').replace("^",'-'))
   #print("saving at",save_dir)
   if not os.path.exists(save_dir):
     os.mkdir(save_dir)
@@ -1322,7 +1314,7 @@ def graph_poincare_comb_leg_per_sensor(combined_legs, sensor, save_dir_m, ylim=N
   for inout in ['indoors', 'outdoors']:
     avg_signal = combined_legs[sensor][inout]['avg']
     title = "{} {}".format(sensor, inout)
-    figname = "{}_{}.png".format(sensor.replace(os.path.sep, "-"), inout)
+    figname = "{}_{}.png".format(sensor.replace("/", "-"), inout)
     results = poincare(avg_signal, title=title, show=False, ylim=ylim, xlim=xlim)
     fig = results['poincare_plot']
     columns = ['sensor','inout', 'sd1', 'sd2', 'sd_ratio', 'ellipse_area']
@@ -1343,7 +1335,7 @@ def graph_poincare_comb_leg_per_sensor_per_subject(metadata,data_lookup,zero_cro
   ''' for single sensor - combined legs, for indoors and out, for each subject do poincare on the
   avg signal '''  
   sensor_name = sensor_cols['left'].replace(".1",' '+sensor_cols['sensor']).replace(".3",' '+sensor_cols['sensor'])
-  save_dir = os.path.join(save_dir_m,sensor_name.replace(os.path.sep,'-'))
+  save_dir = os.path.join(save_dir_m,sensor_name.replace("/",'-'))
   if not os.path.exists(save_dir):
     os.mkdir(save_dir)  
   rows = []
@@ -1351,7 +1343,7 @@ def graph_poincare_comb_leg_per_sensor_per_subject(metadata,data_lookup,zero_cro
       indoors, outdoors = combine_legs_single_subject(sensor_name,data_lookup, metadata, zero_crossing_lookup, sensor_cols, subjectID )
       for signal, inout in [(indoors,'indoors'), (outdoors, 'outdoors')]:
         title = "{} {} subject:{}".format(sensor_name, inout, subjectID)
-        figname = "{}_{}_subject{}.png".format(sensor_name.replace(os.path.sep,'-'), inout, subjectID)
+        figname = "{}_{}_subject{}.png".format(sensor_name.replace("/",'-'), inout, subjectID)
         
         results = poincare(signal, title=title, show=False, ylim=ylim, xlim=xlim)
         fig = results['poincare_plot']
@@ -2115,12 +2107,15 @@ def run_everything3(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR, combi
 
 def run_cadence_filtered_everything():
   ##load all data and filter it
-  with open(os.path.join("Analysis", 'cadence','outliers.pickle'),'rb') as fileobj:
-    outliers = pickle.load(fileobj)
+  this_file_path = os.path.dirname(os.path.realpath(__file__))
+  base_dir = os.path.join(this_file_path,'results','05.15.23')
+  outliers = cadence_remove_outlier(base_dir)
+  if not os.path.join(base_dir, 'cadence_filtered'):
+    os.mkdir(os.path.join(base_dir, 'cadence_filtered'))
   for PACE in ['slow', 'normal','fast']:
     #PACE = 'normal'
-    load_dir = os.path.join('Analysis',PACE)
-    SAVE_DIR = os.path.join('Analysis','cadence_filtered',PACE)
+    load_dir = os.path.join(base_dir,PACE)
+    SAVE_DIR = os.path.join(base_dir,'cadence_filtered',PACE)
     if not os.path.exists(SAVE_DIR):
       os.mkdir(SAVE_DIR)
     print("SAVE_DIR", SAVE_DIR)
@@ -2141,6 +2136,7 @@ def run_cadence_filtered_everything():
     save_dir_gate_lengths = os.path.join(SAVE_DIR, "stats_of_gate_lengths")
     if not os.path.exists(save_dir_gate_lengths):
       os.mkdir(save_dir_gate_lengths)
+    print("sub_dirs", os.listdir(SAVE_DIR))
     start = datetime.datetime.now()
     df_gate_stats_cols = ['sensor','area', 'in-out', 'filename','trial', 'subjectID' ,'avg gate length (data points)', 'std', 'max', 'min', 'data points per file', 'vertical_gate_crossing' ]
     ##saves data
@@ -2172,7 +2168,8 @@ def run_cadence_filtered_everything():
 
 def run_everything():
   ##load all data and filter it
-  base_dir = os.path.join('Analysis',"05_13_23")
+  this_file_path = os.path.dirname(os.path.realpath(__file__))
+  base_dir = os.path.join(this_file_path,'results','05.15.23')
   if not os.path.exists(base_dir):
     os.mkdir(base_dir)
   for PACE in [ 'fast', 'normal','slow']:
@@ -2192,11 +2189,13 @@ def run_everything():
     print("data_lookup took", (datetime.datetime.now()-start).total_seconds(), "to run")  
     start = datetime.datetime.now()
     ##doesn't save anything
-    zero_crossing_lookup =calc_all_gate_crossings(metadata, data_lookup, GATE_CROSSING)
+    zero_crossing_lookup =calc_all_gate_crossings(metadata, data_lookup, gate_crossing = GATE_CROSSING)
     print("zero_crossing_lookup took", (datetime.datetime.now()-start), "to run")  
     save_dir_gate_lengths = os.path.join(SAVE_DIR, "stats_of_gate_lengths")
     if not os.path.exists(save_dir_gate_lengths):
       os.mkdir(save_dir_gate_lengths)
+    print("sub_dirs", os.listdir(SAVE_DIR))
+
     start = datetime.datetime.now()
     df_gate_stats_cols = ['sensor','area', 'in-out', 'filename','trial', 'subjectID' ,'avg gate length (data points)', 'std', 'max', 'min', 'data points per file', 'vertical_gate_crossing' ]
     ##saves data
@@ -2236,7 +2235,7 @@ def run_everything():
   re_format_distance_sim(base_dir)
   re_format_poincare_sim_stats(base_dir)
 
-
+run_everything()
 
 
 
