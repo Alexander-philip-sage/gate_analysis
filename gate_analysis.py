@@ -1996,7 +1996,7 @@ def lr_control_ivo(df_lr, df_io, df_lrc, save_dir, p_alpha=0.05):
   data=[]
   for sensor  in list(sensor_to_lr.keys()):
     sub = df_control[df_control.sensor==sensor]
-    print(sensor)
+    #print(sensor)
     row={}
     per_subject_data = {}
     io_sensors = sensor_to_lr[sensor]
@@ -2170,12 +2170,15 @@ def run_cadence_filtered_everything():
       pickle.dump(zero_crossing_lookup,fileobj)      
 
 def run_everything():
+  function_start = datetime.datetime.now()
+  print("running", datetime.today().strftime('%Y-%m-%d'))
   ##load all data and filter it
   this_file_path = os.path.dirname(os.path.realpath(__file__))
   base_dir = os.path.join(this_file_path,'results','05.15.23')
   if not os.path.exists(base_dir):
     os.mkdir(base_dir)
   for PACE in [ 'fast', 'normal','slow']:
+    pace_start = datetime.datetime.now()
     SAVE_DIR = os.path.join(base_dir,PACE)
     print("SAVE_DIR", SAVE_DIR)
     if not os.path.exists(SAVE_DIR):
@@ -2231,13 +2234,15 @@ def run_everything():
     zero_crossing_lookup=None
     data_lookup=None
     metadata=None
+    print(PACE, "finished", (datetime.datetime.now()-pace_start))
+
   if not os.path.exists(os.path.join(base_dir,'trends_across_pace')):
-    os.mkdir()
+    os.mkdir(os.path.join(base_dir,'trends_across_pace'))
   re_formatting_peak(base_dir)
   re_format_paired_comparison(base_dir)
   re_format_distance_sim(base_dir)
   re_format_poincare_sim_stats(base_dir)
-
+  print("whole function took",(datetime.datetime.now()-function_start) )
 run_everything()
 
 
