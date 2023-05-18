@@ -943,7 +943,7 @@ def calc_shapiro_t_test_legs_combined(save_dir_nc):
     df_r = pd.read_csv(right_file)
     df_c = pd.concat([df_l, df_r])
     avg_cols = [x for x in df_c.columns if 'avg' in x]
-    print(comb_file_path)
+    #print(comb_file_path)
     calc_shapiro(data_s, data_t, data_w, comb_file_path, avg_cols, df_c, save_dir)
   
   df_s = pd.DataFrame(data_s, columns=['source', "inout", "data", "w_statistic", "p_value", 'avg', 'std'])
@@ -2170,11 +2170,12 @@ def run_cadence_filtered_everything():
       pickle.dump(zero_crossing_lookup,fileobj)      
 
 def run_everything():
+  print("if your computer goes to sleep while this is running, the function will hang and never finish")
   function_start = datetime.datetime.now()
-  print("running", datetime.today().strftime('%Y-%m-%d'))
+  print("running", datetime.datetime.today().strftime('%Y-%m-%d'))
   ##load all data and filter it
   this_file_path = os.path.dirname(os.path.realpath(__file__))
-  base_dir = os.path.join(this_file_path,'results','05.15.23')
+  base_dir = os.path.join(this_file_path,'results','05.17.23')
   if not os.path.exists(base_dir):
     os.mkdir(base_dir)
   for PACE in [ 'fast', 'normal','slow']:
