@@ -85,6 +85,10 @@ def check_indoor_and_outdoor(metadata):
   '''removes subjects from the dataset if they don't have at least one indoor
   and one outdoor file'''
   remove_subjectID = []
+  found_subjects = set(metadata['subjectID'].unique())
+  diff_subjects = set([i for i in range(1,31)]).difference(found_subjects)
+  if len(diff_subjects)>0:
+    print("expected 30 subjects. these were missing", diff_subjects)
   for _,subs in metadata.groupby(by=['subjectID']):
     if len(subs[subs.inout=='indoors'])==0 or len(subs[subs.inout=='outdoors'])==0:
       remove_subjectID.append(subs.subjectID.iloc[0])
@@ -182,6 +186,9 @@ def generate_examples_of_butter_filter(zero_crossing_lookup, metadata,  N:int = 
       os.mkdir(filter_dir)
     image_name = file.replace(".csv", '')+ " center " +str(center)+'.png'
     fig.savefig(os.path.join(filter_dir, image_name) )
+
+########################################################################################
+########################################################################################
 
 
 def find_swing_stance_index(signal, min_percent=35):
@@ -459,6 +466,8 @@ def plot_gate_lengths_p_subject(filename,save_dir_gate_lengths):
   _ = ax[1].set_title("75 Percentile outliers")
   fig.savefig(os.path.join(save_dir_gate_lengths,"std-avg_outlier_graph_"+df_gate_lengths['area'].iloc[0]+".png"))
   return df_gate_lengths
+########################################################################################
+########################################################################################
 
 def find_missing(condition, name, metadata, PACE):
   one_to_thirty = set([x for x in range(1,31)])
@@ -504,7 +513,10 @@ def describe_sensors(good_points_df):
     print("std", round(sub_df['percent_good'].std(),2))
     print("max", sub_df['percent_good'].max())    
     print("min", sub_df['percent_good'].min())
-print("indoors and outdoors")
+
+########################################################################################
+########################################################################################
+
 def grab_normalized_gate(df: pd.core.frame.DataFrame, zero_crossings: List[Tuple[int]], gate_ind:int , header:str):
   '''grabs the gate at the index given and normalizes the data points to 100'''
   start = zero_crossings[gate_ind][0]
@@ -1240,6 +1252,8 @@ def cadence_remove_outlier(base_dir):
   with open(os.path.join(base_dir, 'cadence_outliers.pickle'), 'wb')as fileobj:
     pickle.dump(outliers,fileobj)
   return outliers
+########################################################################################
+########################################################################################
 
 def one_subject_summary(subjectID):
   rows = []
@@ -1277,6 +1291,8 @@ def pull_together_across_speeds():
   df_compare['outdoors:abs(normal-x)/normal'] = [abs(onormal - oslow)/onormal, 0, abs(onormal-ofast)/onormal]
   df_compare.to_csv(os.path.join("Analysis", 'cadence', "cadence_aggregate.csv"))
   return df_compare
+########################################################################################
+########################################################################################
 
 def graph_poincare_per_leg(data_lookup, metadata, zero_crossing_lookup, sensor, save_dir):
   ''' for single sensor, for indoors and out, for each subject do poincare on the
@@ -1459,6 +1475,8 @@ def calculate_poincare_stats(alpha = 0.05):
   poin_stats.to_csv(os.path.join(save_dir, 'poincare_sim_stats.csv'), index=False)
   #print("indoor mean", indoors.mean(), "std", indoors.std())
   return poin_stats
+########################################################################################
+########################################################################################
 
 def re_format_poincare_sim_stats(base_dir = os.path.join('Analysis')):
   df=pd.DataFrame()
@@ -1570,6 +1588,8 @@ def re_format_paired_comparison(base_dir = os.path.join('Analysis')):
     new_table.append(row)
   new_table= pd.DataFrame(new_table, columns=column_names)
   new_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'paired_comparison_sim_stats.csv'), index=False)
+########################################################################################
+########################################################################################
 
 def continuous_gate_crossings(file):
   ##raw data
@@ -1718,6 +1738,8 @@ def make_summary_plots(metadata, subjectID =None, sensor=None):
   avg, std = graph_summary_avg(subjectID, sensor, indoors)
   graph_summary_avg_marked(subjectID, sensor, avg, std)
 
+########################################################################################
+########################################################################################
 
 def get_signal_indoors_outdoors(data_lookup, metadata, zero_crossing_lookup, column_to_graph):
   '''returns: np array of avg signal'''
@@ -2013,6 +2035,20 @@ def lr_control_ivo(df_lr, df_io, df_lrc, save_dir, p_alpha=0.05):
   measurements = ['_avg', '_std','_p_shapiro','_w_shapiro']
   df_control_comp = pd.DataFrame(data, columns=list(row.keys()))
   df_control_comp.to_csv(os.path.join(save_dir, "lr_control_compare_lio_rio.csv"))
+########################################################################################
+########################################################################################
+
+def compare_runs(base_dir, compare_dir):
+  base_files = glob.glob(os.path.join(base_dir, "trends_across_pace", "*.csv"))
+  compare_files = glob.glob(os.path.join(compare_dir, "trends_across_pace", "*.csv"))
+  for base_file, compare_file in zip(base_files, compare_files):
+    base_df = pd.read_csv(base_file)
+    compare_df = pd.read_csv(compare_file)
+    print("comparing", base_file, compare_file)
+    print(base_df.compare(compare_df))
+
+########################################################################################
+########################################################################################
 
 def run_everything1(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR):
   print("run_everything1", SAVE_DIR)
@@ -2022,14 +2058,14 @@ def run_everything1(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR):
   each_sensor_each_subject(save_dir, data_lookup, metadata, zero_crossing_lookup)
   start = datetime.datetime.now()
   save_each_subject_each_sensor(save_dir, data_lookup, metadata, zero_crossing_lookup)
-  print("save_each_subject_each_sensor took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: save_each_subject_each_sensor", (datetime.datetime.now()-start).total_seconds(), "to run")
   save_dir = os.path.join(SAVE_DIR, 'poincare')
   if not os.path.exists(save_dir):
     os.mkdir(save_dir)
   start = datetime.datetime.now()
   sens = LEFT_AVY_HEADER
   graph_poincare_per_leg(data_lookup, metadata, zero_crossing_lookup, sens, save_dir)
-  print("graph_poincare_per_leg took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: graph_poincare_per_leg ", (datetime.datetime.now()-start).total_seconds(), "to run")
   combined_legs= aggregate_subjects_trials_legs(data_lookup, metadata, zero_crossing_lookup)
   for sensor in ['Acceleration Y (m/s^2) shank', 'Angular Velocity Y (rad/s) shank']:
     graph_poincare_comb_leg_per_sensor(combined_legs, sensor, save_dir, xlim=[-7,4], ylim=[-7,4])
@@ -2040,34 +2076,32 @@ def run_everything1(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR):
   start = datetime.datetime.now()
   df_poincare_p_subject = graph_poincare_comb_leg_per_subject(metadata,data_lookup,zero_crossing_lookup, save_dir)
   plt.close()
-  print("graph_poincare_comb_leg_per_subject took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: graph_poincare_comb_leg_per_subject", (datetime.datetime.now()-start).total_seconds(), "to run")
   poincare_sim_stats_per_sensor(SAVE_DIR)
-  print("poincare data took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: poincare_sim_stats_per_sensor", (datetime.datetime.now()-start).total_seconds(), "to run")
 
 def run_everything2(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR):
   print("run_everything2", SAVE_DIR)  
   start = datetime.datetime.now()
   gate_peak_valley_swing(metadata, data_lookup, zero_crossing_lookup, SAVE_DIR)
-  print("gate_peak_valley_swing took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: gate_peak_valley_swing", (datetime.datetime.now()-start).total_seconds(), "to run")
   start = datetime.datetime.now()
-  ##FLAG
   calc_shapiro_t_test(SAVE_DIR)
-  print("calc_shapiro_t_test took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: calc_shapiro_t_test ", (datetime.datetime.now()-start).total_seconds(), "to run")
   plt.close()
   start = datetime.datetime.now()
-  ##FLAG
   calc_shapiro_t_test_legs_combined(SAVE_DIR)
-  print("calc_shapiro_t_test_legs_combined took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: calc_shapiro_t_test_legs_combined", (datetime.datetime.now()-start).total_seconds(), "to run")
   start = datetime.datetime.now()
   save_dir = os.path.join(SAVE_DIR, 'combined_subjects_and_trials')
   if not os.path.exists(save_dir):
     os.mkdir(save_dir)
   graph_sensors_combined_subjects_trials(save_dir, data_lookup, metadata, zero_crossing_lookup)
   plt.close()
-  print("graph_sensors_combined_subjects_trials took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: graph_sensors_combined_subjects_trials", (datetime.datetime.now()-start).total_seconds(), "to run")
   start = datetime.datetime.now()
   global_mins, global_maxes, ranges = combined_subjects_trials_signal_stats(data_lookup, metadata, zero_crossing_lookup, save_dir)
-  print("combined_subjects_trials_signal_statstook", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: combined_subjects_trials_signal_stats", (datetime.datetime.now()-start).total_seconds(), "to run")
   plt.close()
   start = datetime.datetime.now()
   save_dir = os.path.join(SAVE_DIR, 'combined_subjects_and_trials_and_legs')
@@ -2075,25 +2109,25 @@ def run_everything2(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR):
     os.mkdir(save_dir)   
   combined_legs = graph_aggregate_subjects_trials_legs(save_dir, data_lookup, metadata, zero_crossing_lookup)
   plt.close()
-  print("graph_aggregate_subjects_trials_legs took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: graph_aggregate_subjects_trials_legs", (datetime.datetime.now()-start).total_seconds(), "to run")
   return combined_legs
 
 def run_everything3(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR, combined_legs):
   print("run_everything3", SAVE_DIR)
   start = datetime.datetime.now()
   signal_similarity(metadata,data_lookup, zero_crossing_lookup, os.path.join(SAVE_DIR, 'combined_subjects_and_trials'))
-  print("signal_similarity took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: signal_similarity", (datetime.datetime.now()-start).total_seconds(), "to run")
   start = datetime.datetime.now()
   signal_similarity_per_subject_indoor_outdoor(metadata,data_lookup, zero_crossing_lookup, os.path.join(SAVE_DIR, 'similarity_per_subject'))
-  print("signal_similarity_per_subject_indoor_outdoor took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: signal_similarity_per_subject_indoor_outdoor", (datetime.datetime.now()-start).total_seconds(), "to run")
   plt.close()
   start = datetime.datetime.now()
   save_dir=os.path.join(SAVE_DIR, 'similarity_per_subject')
   signal_similarity_per_subject_combined_invsout(metadata,data_lookup, zero_crossing_lookup, save_dir)
-  print("signal_similarity_per_subject_combined_invsout took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: signal_similarity_per_subject_combined_invsout", (datetime.datetime.now()-start).total_seconds(), "to run")
   start = datetime.datetime.now()
   signal_similarity_per_subject_left_right(metadata,data_lookup, zero_crossing_lookup, os.path.join(SAVE_DIR, 'similarity_per_subject'))
-  print("signal_similarity_per_subject_left_right took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: signal_similarity_per_subject_left_right", (datetime.datetime.now()-start).total_seconds(), "to run")
   start = datetime.datetime.now()
   save_dir=os.path.join(SAVE_DIR, 'similarity_per_subject')
   df_lr=pd.read_csv(os.path.join(save_dir,'left_vs_right.csv'))
@@ -2101,12 +2135,12 @@ def run_everything3(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR, combi
   df_lrc_io=pd.read_csv(os.path.join(save_dir,'lr_combined_indoor_vs_outdoor.csv'))
 
   lr_control_ivo(df_lr, df_io,df_lrc_io, save_dir)
-  print("lr_control_ivo took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: lr_control_ivo", (datetime.datetime.now()-start).total_seconds(), "to run")
   start = datetime.datetime.now()
   #combined_legs = aggregate_subjects_trials_legs(data_lookup, metadata, zero_crossing_lookup)
   signal_sim_comb_legs(combined_legs, SAVE_DIR)
   plt.close()
-  print("signal_sim_comb_legs took", (datetime.datetime.now()-start).total_seconds(), "to run")
+  print("time: signal_sim_comb_legs", (datetime.datetime.now()-start).total_seconds(), "to run")
 
 def run_cadence_filtered_everything():
   ##load all data and filter it
@@ -2131,11 +2165,11 @@ def run_cadence_filtered_everything():
     data_lookup = {}
     for filename in metadata['filename']:
       data_lookup[filename]=load_data(filename)
-    print("data_lookup took", (datetime.datetime.now()-start).total_seconds(), "to run")  
+    print("time: data_lookup", (datetime.datetime.now()-start).total_seconds(), "to run")  
     start = datetime.datetime.now()
     ##doesn't save anything
     zero_crossing_lookup =calc_all_gate_crossings(metadata, data_lookup, GATE_CROSSING)
-    print("zero_crossing_lookup took", (datetime.datetime.now()-start), "to run")  
+    print("time:  zero_crossing_lookup", (datetime.datetime.now()-start), "to run")  
     save_dir_gate_lengths = os.path.join(SAVE_DIR, "stats_of_gate_lengths")
     if not os.path.exists(save_dir_gate_lengths):
       os.mkdir(save_dir_gate_lengths)
@@ -2144,7 +2178,7 @@ def run_cadence_filtered_everything():
     df_gate_stats_cols = ['sensor','area', 'in-out', 'filename','trial', 'subjectID' ,'avg gate length (data points)', 'std', 'max', 'min', 'data points per file', 'vertical_gate_crossing' ]
     ##saves data
     df_per_file, filter_to_gate_thresh = stats_gate_lengths_by_file(metadata,data_lookup, df_gate_stats_cols, save_dir_gate_lengths, MAX_STD= 2, zero_crossing_lookup=zero_crossing_lookup)
-    print("filtering bad gates took", (datetime.datetime.now()-start).total_seconds(), "to run")
+    print("time: filter_to_gate_thresh", (datetime.datetime.now()-start).total_seconds(), "to run")
     start = datetime.datetime.now()
     zero_crossing_lookup=calc_all_gate_crossings(metadata, data_lookup, gate_crossing = GATE_CROSSING, gate_length_bounds= filter_to_gate_thresh)
     ##re-calculate the stats of the gate lengths now that the filter has been applied
@@ -2187,17 +2221,17 @@ def run_everything():
     start = datetime.datetime.now()
     metadata=load_metadata(PACE, DATA_DIR)
     print("paces found", metadata['pace'].unique())
-    print("metadata took", (datetime.datetime.now()-start).total_seconds(), "to run")  
+    print("time: load_metadata", (datetime.datetime.now()-start).total_seconds(), "to run")  
     assert len(metadata['pace'].unique())==1, "paces"+str(metadata['pace'].unique())+" rows "+str(len(metadata))
     start = datetime.datetime.now()
     data_lookup = {}
     for filename in metadata['filename']:
       data_lookup[filename]=load_data(filename)
-    print("data_lookup took", (datetime.datetime.now()-start).total_seconds(), "to run")  
+    print("time: data_lookup", (datetime.datetime.now()-start).total_seconds(), "to run")  
     start = datetime.datetime.now()
     ##doesn't save anything
     zero_crossing_lookup =calc_all_gate_crossings(metadata, data_lookup, gate_crossing = GATE_CROSSING)
-    print("zero_crossing_lookup took", (datetime.datetime.now()-start), "to run")  
+    print("time: zero_crossing_lookup", (datetime.datetime.now()-start), "to run")  
     save_dir_gate_lengths = os.path.join(SAVE_DIR, "stats_of_gate_lengths")
     if not os.path.exists(save_dir_gate_lengths):
       os.mkdir(save_dir_gate_lengths)
@@ -2207,7 +2241,7 @@ def run_everything():
     df_gate_stats_cols = ['sensor','area', 'in-out', 'filename','trial', 'subjectID' ,'avg gate length (data points)', 'std', 'max', 'min', 'data points per file', 'vertical_gate_crossing' ]
     ##saves data
     df_per_file, filter_to_gate_thresh = stats_gate_lengths_by_file(metadata,data_lookup, df_gate_stats_cols, save_dir_gate_lengths, MAX_STD= 2, zero_crossing_lookup=zero_crossing_lookup)
-    print("filtering bad gates took", (datetime.datetime.now()-start).total_seconds(), "to run")
+    print("time: filtering bad gates", (datetime.datetime.now()-start).total_seconds(), "to run")
     start = datetime.datetime.now()
     zero_crossing_lookup=calc_all_gate_crossings(metadata, data_lookup, gate_crossing = GATE_CROSSING, gate_length_bounds= filter_to_gate_thresh)
     ##re-calculate the stats of the gate lengths now that the filter has been applied
@@ -2243,8 +2277,10 @@ def run_everything():
   re_format_paired_comparison(base_dir)
   re_format_distance_sim(base_dir)
   re_format_poincare_sim_stats(base_dir)
-  print("whole function took",(datetime.datetime.now()-function_start) )
-run_everything()
+  print("time: run_everything",(datetime.datetime.now()-function_start) )
+
+if __name__=="__main__":
+  run_everything()
 
 
 
