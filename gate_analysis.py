@@ -51,7 +51,7 @@ for d in tmp:
    COLUMNS_BY_SENSOR.append({'sensor':d['sensor'], 'right':d['right'].replace('Y','X'), 'left':d['left'].replace('Y','X')})
    COLUMNS_BY_SENSOR.append({'sensor':d['sensor'], 'right':d['right'].replace('Y','Z'), 'left':d['left'].replace('Y','Z')})   
 
-DATA_DIR = os.path.join(r"C:\Users\sage\Documents\adult\deep\raw_data_2023.01.31-20230510T012044Z-001\raw_data_2023.01.31")#'Text_File/Master_Data--TD_1-30_CSVFiles/Subjects_1-30-inw1_through_osw1'
+DATA_DIR = os.path.join(r"C:\Users\sage\Documents\gate_analysis\raw_data")
 GATE_CROSSING = -0.3
 FREQUENCY = 128
 
@@ -2039,12 +2039,19 @@ def lr_control_ivo(df_lr, df_io, df_lrc, save_dir, p_alpha=0.05):
 ########################################################################################
 
 def compare_runs(base_dir, compare_dir):
-  base_files = glob.glob(os.path.join(base_dir, "trends_across_pace", "*.csv"))
-  compare_files = glob.glob(os.path.join(compare_dir, "trends_across_pace", "*.csv"))
-  for base_file, compare_file in zip(base_files, compare_files):
-    base_df = pd.read_csv(base_file)
-    compare_df = pd.read_csv(compare_file)
-    print("comparing", base_file, compare_file)
+  #base_files = glob.glob(os.path.join(base_dir, "trends_across_pace", "*.csv"))
+  #compare_files = glob.glob(os.path.join(compare_dir, "trends_across_pace", "*.csv"))
+  files_to_check = {'cos_euclidean_sim_stats.csv':'sensor','gate_swing_sim_stats.csv':'sensor',
+                    'paired_comparison_sim_stats.csv':'sensor','peak_valley_sim_stats.csv':'sensor',
+                    'poincare_sim_stats.csv':'sensor'}
+  for fname in list(files_to_check.keys()):
+    print("comparing", fname)
+    base_df = pd.read_csv(os.path.join(base_dir,"trends_across_pace",fname), index_col=False)
+    compare_df = pd.read_csv(os.path.join(compare_dir,"trends_across_pace",fname), index_col=False)
+    base_df.sort_values(by=files_to_check[fname], inplace=True)
+    compare_df.sort_values(by=files_to_check[fname], inplace=True)
+    base_df.reset_index(drop=True, inplace=True)
+    compare_df.reset_index(drop=True, inplace=True)
     print(base_df.compare(compare_df))
 
 ########################################################################################
@@ -2280,7 +2287,8 @@ def run_everything():
   print("time: run_everything",(datetime.datetime.now()-function_start) )
 
 if __name__=="__main__":
-  run_everything()
+  #run_everything()
+  compare_runs(r".\results\05_13_23", r".\results\05.17.23")
 
 
 
