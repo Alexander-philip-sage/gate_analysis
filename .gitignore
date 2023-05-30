@@ -1,5 +1,6 @@
 raw_data
-
+results
+py39
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
