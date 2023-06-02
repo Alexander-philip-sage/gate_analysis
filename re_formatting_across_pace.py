@@ -2,7 +2,7 @@ import os
 import glob
 import datetime
 import pandas as pd
-
+import numpy as np
 
 def re_format_poincare_sim_stats(base_dir = os.path.join('Analysis')):
   df=pd.DataFrame()

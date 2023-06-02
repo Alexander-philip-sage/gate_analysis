@@ -31,7 +31,7 @@ def normalize_signal_by_range(indoor, outdoor):
   outrange = outdoor.max()-outdoor.min()
   return indoor/inrange, outdoor/outrange
 
-def measure_correlation(signal_indoors, signal_outdoors, column_to_graph, verbose=False):
+def measure_correlation(signal_indoors, signal_outdoors, column_to_graph: str, verbose=False):
   corr = correlate(signal_indoors, signal_outdoors)
   peak_corr = max_peak(corr)
   auto_corr = correlate(signal_indoors, signal_indoors)
@@ -55,7 +55,7 @@ def signal_similarity(metadata,data_lookup,  zero_crossing_lookup, save_dir, ver
   for column_to_graph in COLUMNS_TO_GRAPH:
     indoors, outdoors=get_signal_indoors_outdoors(data_lookup, metadata, zero_crossing_lookup, column_to_graph)
     indoors_normrange, outdoors_normrange=normalize_signal_by_range(indoors.copy(), outdoors.copy())
-    correlation_normrange = measure_correlation(indoors_normrange, outdoors_normrange, verbose=False)
+    correlation_normrange = measure_correlation(indoors_normrange, outdoors_normrange,column_to_graph, verbose=False)
     euc = measure_euclidean(indoors.copy(), outdoors.copy())
     cos = np.dot(indoors,outdoors)/(np.linalg.norm(indoors)*np.linalg.norm(outdoors))
     if verbose:
@@ -95,7 +95,7 @@ def signal_similarity_per_subject_indoor_outdoor(metadata,data_lookup, zero_cros
       all_gates = aggregate_single_subject(data_lookup, metadata, zero_crossing_lookup, sensor, 'outdoors' , subjectID)
       outdoors = all_gates.mean(axis=0)
       indoors_normrange, outdoors_normrange=normalize_signal_by_range(indoors.copy(), outdoors.copy())
-      correlation_normrange = measure_correlation(indoors_normrange, outdoors_normrange, verbose=False)
+      correlation_normrange = measure_correlation(indoors_normrange, outdoors_normrange,sensor, verbose=False)
       euc = measure_euclidean(indoors.copy(), outdoors.copy())
       cos = np.dot(indoors,outdoors)/(np.linalg.norm(indoors)*np.linalg.norm(outdoors))  
       data.append({'sensor':sensor,'subjectID':subjectID,'area':COLUMNS_TO_AREA[sensor],
@@ -116,7 +116,7 @@ def signal_similarity_per_subject_combined_invsout(metadata,data_lookup, zero_cr
       sensor_name = sensor_cols['left'].replace(".1",' '+sensor_cols['sensor']).replace(".3",' '+sensor_cols['sensor'])
       indoors, outdoors = combine_legs_single_subject(sensor_name,data_lookup, metadata, zero_crossing_lookup, sensor_cols, subjectID )
       indoors_normrange, outdoors_normrange=normalize_signal_by_range(indoors.copy(), outdoors.copy())
-      correlation_normrange = measure_correlation(indoors_normrange, outdoors_normrange, verbose=False)
+      correlation_normrange = measure_correlation(indoors_normrange, outdoors_normrange,sensor_name, verbose=False)
       euc = measure_euclidean(indoors.copy(), outdoors.copy())
       cos = np.dot(indoors,outdoors)/(np.linalg.norm(indoors)*np.linalg.norm(outdoors))  
       data.append({'sensor':sensor_name,'subjectID':subjectID,'area':sensor_cols['sensor'],
@@ -159,7 +159,7 @@ def signal_similarity_per_subject_left_right(metadata,data_lookup, zero_crossing
         left_gates = left_gates_a.mean(axis=0)
         right_gates = right_gates_a.mean(axis=0)
         left_normrange, right_normrange=normalize_signal_by_range(left_gates.copy(), right_gates.copy())
-        correlation_normrange = measure_correlation(left_normrange, right_normrange, verbose=False)
+        correlation_normrange = measure_correlation(left_normrange, right_normrange,sensor_name, verbose=False)
         euc = measure_euclidean(left_gates.copy(), right_gates.copy())
         cos = np.dot(left_gates,right_gates)/(np.linalg.norm(left_gates)*np.linalg.norm(right_gates))  
 

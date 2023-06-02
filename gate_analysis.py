@@ -13,7 +13,6 @@ from typing import List, Tuple
 from scipy.signal import correlate, find_peaks, butter, sosfilt
 
 from scipy.stats import shapiro, ttest_rel, wilcoxon
-import statsmodels.api as sm
 
 import pickle
 
@@ -22,7 +21,11 @@ from extract_gates import find_swing_stance_index,  find_lowest_valley, avg_std_
 from poincare import poincare
 from re_formatting_across_pace import peak_z_score_cohens_d, re_format_paired_comparison, re_format_distance_sim, re_formatting_peak, re_format_poincare_sim_stats
 from global_variables import RIGHT_AVY_HEADER,LEFT_AVY_HEADER,  FREQUENCY, GATE_CROSSING, DATA_DIR, COLUMNS_BY_SENSOR, COLUMNS_TO_LEG, COLUMNS_TO_AREA, COLUMNS_TO_GRAPH
- 
+from extract_signal import each_sensor_each_subject, save_each_subject_each_sensor, aggregate_subjects_trials_legs, combined_subjects_trials_signal_stats, graph_sensors_combined_subjects_trials
+from extract_signal import calc_shapiro_t_test, gate_peak_valley_swing, graph_aggregate_subjects_trials_legs, cadence_remove_outlier, cadence_per_subject
+from extract_signal import aggregate_single_subject, calc_shapiro_t_test_legs_combined
+from signal_similarity import signal_similarity, lr_control_ivo, signal_similarity_per_subject_indoor_outdoor, signal_similarity_per_subject_left_right, signal_similarity_per_subject_combined_invsout
+from signal_similarity import signal_sim_comb_legs, combine_legs_single_subject
 def find_missing(condition, name, metadata, PACE):
   one_to_thirty = set([x for x in range(1,31)])
   subjects_found = set(metadata[condition]['subjectID'].unique())
