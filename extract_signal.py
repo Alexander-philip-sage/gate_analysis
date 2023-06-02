@@ -1,6 +1,7 @@
 from global_variables import RIGHT_AVY_HEADER,LEFT_AVY_HEADER,  FREQUENCY, GATE_CROSSING, DATA_DIR, COLUMNS_BY_SENSOR, COLUMNS_TO_LEG, COLUMNS_TO_AREA, COLUMNS_TO_GRAPH
 import matplotlib.pyplot as plt
 import os
+import time
 import glob
 import datetime
 import pandas as pd
@@ -13,6 +14,7 @@ import random
 from extract_gates import find_swing_stance_index, find_lowest_valley, max_peak, avg_std_gate_lengths
 import pickle
 from scipy.stats import shapiro, ttest_rel, wilcoxon
+import statsmodels.api as sm
 
 def grab_normalized_gate(df: pd.core.frame.DataFrame, zero_crossings: List[Tuple[int]], gate_ind:int , header:str):
   '''grabs the gate at the index given and normalizes the data points to 100'''
@@ -386,7 +388,6 @@ def calc_shapiro(data_s,data_t, data_w, fpath, avg_cols, df_p, save_dir, alpha =
         dstream = pd_series.to_numpy()
         fname = graph_avg_hist(save_dir, inout, fpath, avg_col, dstream)
         source = fname.replace(".csv","")
-        time.sleep(0.1)
         w_statistic, p_value = shapiro(dstream)
         data_s.append({'source':source, "inout":inout, "data":avg_col, 
                        "w_statistic":w_statistic, "p_value":p_value,
