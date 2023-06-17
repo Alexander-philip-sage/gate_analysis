@@ -28,44 +28,6 @@ def re_format_poincare_sim_stats(base_dir = os.path.join('Analysis')):
   new_table= pd.DataFrame(new_table, columns=column_names)
   new_table.to_csv(os.path.join(base_dir, 'trends_across_pace', 'poincare_sim_stats.csv'), index=False)
 
-def re_formatting_peak(base_dir = os.path.join('Analysis')):
-  df=pd.DataFrame()
-  for speed in ['normal', 'slow', 'fast']:
-    load_dir = os.path.join(base_dir, speed,'peaks_per_subject', 'gaussian_analysis')
-    df_p = pd.read_csv(os.path.join(load_dir, 'combined_legs_test_t_and_wilcoxon.csv'))
-    df_p['pace']=speed
-    df = pd.concat([df, df_p])
-  sensors = list(df['source'].unique())
-  new_table = []
-  for sensor in sensors:
-    row = [sensor]
-    column_names = ['sensor']
-    subdf = df[(df['source']==sensor)]
-    for speed in ['normal', 'slow', 'fast']:
-      for metric in ['avg_peak',  'avg_range','avg_valley']:
-        cond = (subdf['data']==metric)&(subdf['pace']==speed)
-        column_names.append(speed+'_'+metric)
-        assert len(subdf[cond]['p_value'].to_numpy())==1
-        row.append(subdf[cond]['p_value'].iloc[0])
-    new_table.append(row)
-  new_table= pd.DataFrame(new_table, columns=column_names)
-  new_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'peak_valley_sim_stats.csv'), index=False)
-
-  new_table = []
-  sensors = list(df[df['data']=='avg_gate_length']['source'].unique())
-  for sensor in sensors:
-    row = [sensor]
-    column_names = ['sensor']
-    subdf = df[(df['source']==sensor)]
-    for speed in ['normal', 'slow', 'fast']:
-      for metric in ['avg_swing_index','avg_gate_length']:
-        cond = (subdf['data']==metric)&(subdf['pace']==speed)
-        column_names.append(speed+'_'+metric)
-        assert len(subdf[cond]['p_value'].to_numpy())==1
-        row.append(subdf[cond]['p_value'].iloc[0])
-    new_table.append(row)
-  new_table= pd.DataFrame(new_table, columns=column_names)
-  new_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'gate_swing_sim_stats.csv'), index=False)
 
 def re_format_distance_sim(base_dir = os.path.join('Analysis')):
   df=pd.DataFrame()

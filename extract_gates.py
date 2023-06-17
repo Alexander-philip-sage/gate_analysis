@@ -9,6 +9,7 @@ from typing import List, Tuple
 from load_data import extract_trial_data
 from collections import Counter
 from global_variables import RIGHT_AVY_HEADER,LEFT_AVY_HEADER,  FREQUENCY, GATE_CROSSING, DATA_DIR, COLUMNS_BY_SENSOR, COLUMNS_TO_LEG, COLUMNS_TO_AREA, COLUMNS_TO_GRAPH
+
 def find_swing_stance_index(signal, min_percent=35):
   '''finds the peak right before the valley of the angular velocity y 
   data stream.
@@ -168,12 +169,10 @@ def graph_zero_crossings(zero_crossings: List[Tuple[int]], avy_data,filename:str
         if graph_limit==0:
           break
 
-
 def avg_std_gate_lengths(zero_crossings: List[Tuple[int]]):
   points_p_gate = [x[1]-x[0] for x in zero_crossings]
   points_p_gate = np.array(points_p_gate)
   return  points_p_gate.mean() , points_p_gate.std(), points_p_gate.max(), points_p_gate.min()  
-
 
 def hist_gate_lengths(zero_crossing: List[Tuple[int]]):
   avg, std , m, n = avg_std_gate_lengths(zero_crossing)
