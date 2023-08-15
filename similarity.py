@@ -1,3 +1,6 @@
+import os, datetime, pickle
+import numpy as np
+
 def z_score_directly(indoor_avg, indoor_std, outdoor_avg, outdoor_std):
   z_score  = (outdoor_avg-indoor_avg)/indoor_std
   cohens_d = (outdoor_avg-indoor_avg)/np.sqrt((indoor_std**2+outdoor_std**2)/2)

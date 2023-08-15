@@ -1,6 +1,7 @@
 ##https://sciendo.com/article/10.2478/slgr-2013-0031
 
-
+import os, datetime, pickle
+import numpy as np
 def poincare(nni=None,
 			 rpeaks=None,
 			 show=True,

@@ -1,3 +1,7 @@
+import os, datetime, pickle
+import numpy as np
+import pandas as pd
+
 def find_swing_stance_index(signal, min_percent=35):
   '''finds the peak right before the valley of the angular velocity y
   data stream.

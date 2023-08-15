@@ -1,3 +1,8 @@
+import os, datetime, pickle
+import numpy as np
+import pandas as pd
+
+
 def extract_trial_data(filename, verbose=False):
   end_part = filename.split('_')[1].replace('.csv','')
   subjectID_str = ''.join([x for x in end_part[:3] if x.isdigit()])

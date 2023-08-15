@@ -1,3 +1,6 @@
+import os, datetime, pickle
+import numpy as np
+import pandas as pd
 
 ################NORMALIZING AND CHECKING GATES########
 def grab_normalized_gate(df: pd.core.frame.DataFrame, zero_crossings: List[Tuple[int]], gate_ind:int , header:str):
