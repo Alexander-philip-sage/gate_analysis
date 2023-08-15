@@ -1,0 +1,192 @@
+pyhrv package version 0.4.1
+biosppy package version 1.0.0
+if your computer goes to sleep while this is running, the function will hang and never finish
+globals
+RIGHT_AVY_HEADER Angular Velocity Y (rad/s).2, LEFT_AVY_HEADER Angular Velocity Y (rad/s).3
+FREQUENCY 128, GATE_CROSSING -0.3, DATA_DIR C:\Users\sage\Documents\gate_analysis\raw_data
+running 2023-06-21
+SAVE_DIR C:\Users\sage\Documents\gate_analysis\results\05.17.23\fast
+paces found in raw data ['normal' 'fast' 'slow']
+
+ found incomplete data
+                              filename  subjectID    inout  pace
+29  20220824-111928-subject_04ifw1.csv          4  indoors  fast
+30  20220824-112236-subject_04ifw2.csv          4  indoors  fast
+paces found ['fast']
+time: load_metadata 0.051594 to run
+time: data_lookup 15.009385 to run
+time: zero_crossing_lookup 0:07:40.028151 to run
+sub_dirs ['combined_subjects_and_trials', 'combined_subjects_and_trials_and_legs', 'graph_each_subject_each_sensor', 'peaks_per_subject', 'pickles', 'poincare', 'similarity_per_subject', 'stats_of_gate_lengths']
+gate crossing used -0.3
+saving file per_file  with gate length stats per file
+time: filtering bad gates 0.304455 to run
+gate crossing used -0.3
+saving file per_file_2std_filtered_outliers  with gate length stats per file
+re-calculate the zero crossings with filter applied
+took 0:07:40.405765 to run
+total points: raw 3533810 2std filtered 3411918
+run_everything1 C:\Users\sage\Documents\gate_analysis\results\05.17.23\fast
+time: save_each_subject_each_sensor 80.679726 to run
+pace ['fast']
+time: graph_poincare_per_leg  21.425088 to run
+pace ['fast']
+C:\Users\sage\Documents\gate_analysis\results\05.17.23\fast\poincare\per_subject\poincare_p_subject.csv
+time: graph_poincare_comb_leg_per_subject 292.991381 to run
+C:\Users\sage\Documents\gate_analysis\results\05.17.23\fast\poincare\per_subject\poincare_p_subject.csv
+time: poincare_sim_stats_per_sensor 293.122786 to run
+run_everything2 C:\Users\sage\Documents\gate_analysis\results\05.17.23\fast
+grabbing data for data streams/columns
+error finding swing index
+values used for swing index 136 values used for other calculations 137
+sensor Angular Velocity Y (rad/s).2 subjectID 27
+error finding swing index
+values used for swing index 405 values used for other calculations 407
+sensor Angular Velocity Y (rad/s).3 subjectID 14
+error finding swing index
+values used for swing index 141 values used for other calculations 142
+sensor Angular Velocity Y (rad/s).3 subjectID 21
+time: gate_peak_valley_swing 66.873345 to run
+time: calc_shapiro_t_test  69.962328 to run
+time: calc_shapiro_t_test_legs_combined 34.100122 to run
+time: graph_sensors_combined_subjects_trials 63.143378 to run
+all values presented are done by analyzing a list of size ~9,198. Where each element in the list is a gate profile. Meaning the average min is the average of ~9,198 minimum values
+time: combined_subjects_trials_signal_stats 55.152952 to run
+time: graph_aggregate_subjects_trials_legs 65.679477 to run
+run_everything3 C:\Users\sage\Documents\gate_analysis\results\05.17.23\fast
+time: signal_similarity 59.158212 to run
+time: signal_similarity_per_subject_indoor_outdoor 54.134611 to run
+time: signal_similarity_per_subject_combined_invsout 54.991072 to run
+time: signal_similarity_per_subject_left_right 53.439121 to run
+time: lr_control_ivo 0.207212 to run
+time: signal_sim_comb_legs 0.012655 to run
+saving pickles
+fast finished 0:38:39.821675
+SAVE_DIR C:\Users\sage\Documents\gate_analysis\results\05.17.23\normal
+paces found in raw data ['normal' 'fast' 'slow']
+paces found ['normal']
+time: load_metadata 0.07294 to run
+time: data_lookup 17.493872 to run
+time: zero_crossing_lookup 0:08:02.427051 to run
+sub_dirs ['combined_subjects_and_trials', 'combined_subjects_and_trials_and_legs', 'graph_each_subject_each_sensor', 'peaks_per_subject', 'pickles', 'poincare', 'similarity_per_subject', 'stats_of_gate_lengths']
+gate crossing used -0.3
+saving file per_file  with gate length stats per file
+time: filtering bad gates 0.301405 to run
+gate crossing used -0.3
+saving file per_file_2std_filtered_outliers  with gate length stats per file
+re-calculate the zero crossings with filter applied
+took 0:08:07.915620 to run
+total points: raw 3703315 2std filtered 3580916
+run_everything1 C:\Users\sage\Documents\gate_analysis\results\05.17.23\normal
+time: save_each_subject_each_sensor 86.229695 to run
+pace ['normal']
+time: graph_poincare_per_leg  21.778775 to run
+pace ['normal']
+C:\Users\sage\Documents\gate_analysis\results\05.17.23\normal\poincare\per_subject\poincare_p_subject.csv
+time: graph_poincare_comb_leg_per_subject 348.587313 to run
+C:\Users\sage\Documents\gate_analysis\results\05.17.23\normal\poincare\per_subject\poincare_p_subject.csv
+time: poincare_sim_stats_per_sensor 348.723586 to run
+run_everything2 C:\Users\sage\Documents\gate_analysis\results\05.17.23\normal
+grabbing data for data streams/columns
+error finding swing index
+values used for swing index 90 values used for other calculations 91
+sensor Angular Velocity Y (rad/s).2 subjectID 9
+error finding swing index
+values used for swing index 134 values used for other calculations 135
+sensor Angular Velocity Y (rad/s).2 subjectID 17
+error finding swing index
+values used for swing index 81 values used for other calculations 82
+sensor Angular Velocity Y (rad/s).3 subjectID 21
+error finding swing index
+values used for swing index 154 values used for other calculations 155
+sensor Angular Velocity Y (rad/s).3 subjectID 25
+time: gate_peak_valley_swing 72.725651 to run
+time: calc_shapiro_t_test  77.046604 to run
+time: calc_shapiro_t_test_legs_combined 34.817858 to run
+time: graph_sensors_combined_subjects_trials 66.778247 to run
+all values presented are done by analyzing a list of size ~9,198. Where each element in the list is a gate profile. Meaning the average min is the average of ~9,198 minimum values
+time: combined_subjects_trials_signal_stats 55.097206 to run
+time: graph_aggregate_subjects_trials_legs 63.995776 to run
+run_everything3 C:\Users\sage\Documents\gate_analysis\results\05.17.23\normal
+time: signal_similarity 64.236941 to run
+time: signal_similarity_per_subject_indoor_outdoor 53.908957 to run
+time: signal_similarity_per_subject_combined_invsout 53.615638 to run
+time: signal_similarity_per_subject_left_right 53.978025 to run
+time: lr_control_ivo 0.224055 to run
+time: signal_sim_comb_legs 0.016115 to run
+saving pickles
+normal finished 0:41:15.479583
+SAVE_DIR C:\Users\sage\Documents\gate_analysis\results\05.17.23\slow
+paces found in raw data ['normal' 'fast' 'slow']
+
+ found incomplete data
+                              filename  subjectID    inout  pace
+31  20220824-113435-subject_04isw1.csv          4  indoors  slow
+32  20220824-113914-subject_04isw2.csv          4  indoors  slow
+paces found ['slow']
+time: load_metadata 0.127972 to run
+time: data_lookup 22.914738 to run
+time: zero_crossing_lookup 0:07:37.662280 to run
+sub_dirs ['combined_subjects_and_trials', 'combined_subjects_and_trials_and_legs', 'graph_each_subject_each_sensor', 'peaks_per_subject', 'pickles', 'poincare', 'similarity_per_subject', 'stats_of_gate_lengths']
+gate crossing used -0.3
+saving file per_file  with gate length stats per file
+time: filtering bad gates 0.293817 to run
+gate crossing used -0.3
+saving file per_file_2std_filtered_outliers  with gate length stats per file
+re-calculate the zero crossings with filter applied
+took 0:08:15.330984 to run
+total points: raw 3567637 2std filtered 3437172
+run_everything1 C:\Users\sage\Documents\gate_analysis\results\05.17.23\slow
+time: save_each_subject_each_sensor 69.291211 to run
+pace ['slow']
+time: graph_poincare_per_leg  22.198737 to run
+pace ['slow']
+C:\Users\sage\Documents\gate_analysis\results\05.17.23\slow\poincare\per_subject\poincare_p_subject.csv
+time: graph_poincare_comb_leg_per_subject 319.643994 to run
+C:\Users\sage\Documents\gate_analysis\results\05.17.23\slow\poincare\per_subject\poincare_p_subject.csv
+time: poincare_sim_stats_per_sensor 319.784167 to run
+run_everything2 C:\Users\sage\Documents\gate_analysis\results\05.17.23\slow
+grabbing data for data streams/columns
+error finding swing index
+values used for swing index 131 values used for other calculations 132
+sensor Angular Velocity Y (rad/s).2 subjectID 10
+error finding swing index
+values used for swing index 206 values used for other calculations 216
+sensor Angular Velocity Y (rad/s).3 subjectID 21
+error finding swing index
+values used for swing index 259 values used for other calculations 261
+sensor Angular Velocity Y (rad/s).3 subjectID 22
+time: gate_peak_valley_swing 61.667964 to run
+time: calc_shapiro_t_test  71.922452 to run
+time: calc_shapiro_t_test_legs_combined 36.092607 to run
+time: graph_sensors_combined_subjects_trials 62.138401 to run
+all values presented are done by analyzing a list of size ~9,198. Where each element in the list is a gate profile. Meaning the average min is the average of ~9,198 minimum values
+time: combined_subjects_trials_signal_stats 54.428521 to run
+time: graph_aggregate_subjects_trials_legs 57.482347 to run
+run_everything3 C:\Users\sage\Documents\gate_analysis\results\05.17.23\slow
+time: signal_similarity 59.311679 to run
+time: signal_similarity_per_subject_indoor_outdoor 48.265534 to run
+time: signal_similarity_per_subject_combined_invsout 50.401996 to run
+time: signal_similarity_per_subject_left_right 48.026185 to run
+time: lr_control_ivo 0.228413 to run
+time: signal_sim_comb_legs 0.013673 to run
+saving pickles
+slow finished 0:40:25.672330
+['avg_peak' 'avg_valley' 'avg_range' 'avg_gate_length' 'avg_swing_index']
+time: run_everything 2:00:22.013946
+comparing cos_euclidean_sim_stats.csv
+Traceback (most recent call last):
+  File "C:\Users\sage\Documents\gate_analysis\gate_analysis.py", line 593, in <module>
+    compare_runs(base_dir,compare_dir )
+  File "C:\Users\sage\Documents\gate_analysis\gate_analysis.py", line 318, in compare_runs
+    diff_df.to_csv(os.path.join(base_dir,"diff_dir",fname),index=False)
+  File "C:\Users\sage\Documents\gate_analysis\py39\lib\site-packages\pandas\core\generic.py", line 3772, in to_csv
+    return DataFrameRenderer(formatter).to_csv(
+  File "C:\Users\sage\Documents\gate_analysis\py39\lib\site-packages\pandas\io\formats\format.py", line 1186, in to_csv
+    csv_formatter.save()
+  File "C:\Users\sage\Documents\gate_analysis\py39\lib\site-packages\pandas\io\formats\csvs.py", line 240, in save
+    with get_handle(
+  File "C:\Users\sage\Documents\gate_analysis\py39\lib\site-packages\pandas\io\common.py", line 737, in get_handle
+    check_parent_directory(str(handle))
+  File "C:\Users\sage\Documents\gate_analysis\py39\lib\site-packages\pandas\io\common.py", line 600, in check_parent_directory
+    raise OSError(rf"Cannot save file into a non-existent directory: '{parent}'")
+OSError: Cannot save file into a non-existent directory: 'results\05.17.23\diff_dir'

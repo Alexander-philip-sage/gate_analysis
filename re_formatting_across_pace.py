@@ -3,7 +3,6 @@ import glob
 import datetime
 import pandas as pd
 import numpy as np
-
 def re_format_poincare_sim_stats(base_dir = os.path.join('Analysis')):
   df=pd.DataFrame()
   for speed in ['normal', 'slow', 'fast']:
@@ -13,20 +12,28 @@ def re_format_poincare_sim_stats(base_dir = os.path.join('Analysis')):
     df = pd.concat([df, df_p])
   sensors = list(df['sensor'].unique())
   new_table = []
+  test_type_table = []
   for sensor in sensors:
     subdf = df[(df['sensor']==sensor)&(df['inout']=='outdoors')]
     row = [sensor]
+    test_type_row = [sensor]
     column_names = ['sensor']
+    test_type_names = ['sensor']
     for speed in ['normal', 'slow', 'fast']:
       for sd in ['sd1', 'sd2']:
+        test_type_row.append(subdf[(subdf['source']==sd)&(subdf['pace']==speed)]['test_type'].iloc[0])
+        test_type_names.append(speed +' '+sd)
         for metric in ['p_value', 'z_score']:
           column_names.append(speed +' '+sd+' '+metric)
           cond = (subdf['source']==sd)&(subdf['pace']==speed)
           val=subdf[cond][metric].iloc[0]
           row.append(val)
     new_table.append(row)
+    test_type_table.append(test_type_row)
   new_table= pd.DataFrame(new_table, columns=column_names)
   new_table.to_csv(os.path.join(base_dir, 'trends_across_pace', 'poincare_sim_stats.csv'), index=False)
+  test_table= pd.DataFrame(test_type_table, columns=test_type_names)
+  test_table.to_csv(os.path.join(base_dir, 'trends_across_pace', 'poincare_sim_stats_test_types.csv'), index=False)
 
 
 def re_format_distance_sim(base_dir = os.path.join('Analysis')):
@@ -61,21 +68,29 @@ def re_format_paired_comparison(base_dir = os.path.join('Analysis')):
   sensors = list(df['sensor'].unique())
   new_table = []
   data_columns = [ 'lrc_i.vs.o_cosine_similarity_test_p_value',
-                  'lrc_i.vs.o_cosine_similarity_z_score', 
-                  'lrc_i.vs.o_euclidean_distance_test_p_value',  
+                  'lrc_i.vs.o_cosine_similarity_z_score',
+                  'lrc_i.vs.o_euclidean_distance_test_p_value',
                   'lrc_i.vs.o_euclidean_distance_z_score']
+  test_type_data = []
   for sensor in sensors:
     subdf = df[(df['sensor']==sensor)]
     row = [sensor]
+    test_row = [sensor]
     column_names = ['sensor' ]
+    test_names = ['sensor' ]
     for speed in ['normal', 'slow', 'fast']:
+      test_names.append(speed)
+      test_row.append(subdf[subdf['pace']==speed]['test_type'].iloc[0])
       for head in data_columns:
-        assert len(subdf[subdf['pace']==speed][head].to_numpy())==1,subdf[head].to_numpy() 
+        assert len(subdf[subdf['pace']==speed][head].to_numpy())==1,subdf[head].to_numpy()
         row.append(subdf[subdf['pace']==speed][head].iloc[0])
         column_names.append(speed+'_'+head)
     new_table.append(row)
+    test_type_data.append(test_row)
   new_table= pd.DataFrame(new_table, columns=column_names)
   new_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'paired_comparison_sim_stats.csv'), index=False)
+  test_type_table= pd.DataFrame(test_type_data, columns=test_names)
+  test_type_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'paired_comparison_sim_stats_test_types.csv'), index=False)
 
 def z_score_directly(indoor_avg, indoor_std, outdoor_avg, outdoor_std):
   z_score  = (outdoor_avg-indoor_avg)/indoor_std

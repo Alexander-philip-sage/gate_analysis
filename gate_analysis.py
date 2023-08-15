@@ -16,8 +16,8 @@ from scipy.stats import shapiro, ttest_rel, wilcoxon
 
 import pickle
 
-from load_data import select_random_df, load_data, load_metadata
-from extract_gates import find_swing_stance_index,  find_lowest_valley, avg_std_gate_lengths, max_peak, calc_all_gate_crossings, stats_gate_lengths_by_file
+from load_data import load_data, load_metadata
+from extract_gates import calc_data_point_table, calc_all_gate_crossings, stats_gate_lengths_by_file
 from poincare import poincare
 from re_formatting_across_pace import peak_z_score_cohens_d, re_format_paired_comparison, re_format_distance_sim, re_format_poincare_sim_stats
 from global_variables import RIGHT_AVY_HEADER,LEFT_AVY_HEADER,  FREQUENCY, GATE_CROSSING, DATA_DIR, COLUMNS_BY_SENSOR, COLUMNS_TO_LEG, COLUMNS_TO_AREA, COLUMNS_TO_GRAPH
@@ -300,7 +300,6 @@ def calculate_poincare_stats(SAVE_DIR, alpha = 0.05):
   return poin_stats
 ########################################################################################
 ########################################################################################
-
 def compare_runs(base_dir, compare_dir):
   #base_files = glob.glob(os.path.join(base_dir, "trends_across_pace", "*.csv"))
   #compare_files = glob.glob(os.path.join(compare_dir, "trends_across_pace", "*.csv"))
@@ -315,7 +314,35 @@ def compare_runs(base_dir, compare_dir):
     compare_df.sort_values(by=files_to_check[fname], inplace=True)
     base_df.reset_index(drop=True, inplace=True)
     compare_df.reset_index(drop=True, inplace=True)
-    print(base_df.compare(compare_df))
+    diff_df = base_df.compare(compare_df)
+    diff_df.to_csv(os.path.join(base_dir,"diff_dir",fname),index=False)
+
+def compare_combined_legs_test_t_and_wilcoxon(base_dir, compare_dir):
+  if not os.path.exists(os.path.join(base_dir,"diff_dir")):
+    os.mkdir(os.path.join(base_dir,"diff_dir"))
+  filenames = ['combined_legs_test_t_and_wilcoxon.csv','combined_legs_test_shapiro_wilk.csv', 'test_shapiro_wilk.csv','test_wilcoxon.csv']
+  for filename in filenames:
+    print("comparing", filename)
+    for speed in ['normal', 'slow', 'fast']:
+      ext_path = os.path.join(speed,'peaks_per_subject', 'gaussian_analysis', filename)
+      base_df = pd.read_csv(os.path.join(base_dir,ext_path), index_col=False)
+      compare_df = pd.read_csv(os.path.join(compare_dir,ext_path), index_col=False)
+      diff_df =base_df.compare(compare_df)
+      diff_df.to_csv( os.path.join(base_dir,"diff_dir",speed+filename),index=False)
+
+def compare_peaks_per_subject(base_dir, compare_dir):
+  if not os.path.exists(os.path.join(base_dir,"diff_dir")):
+    os.mkdir(os.path.join(base_dir,"diff_dir"))
+  for speed in ['normal', 'slow', 'fast']:
+    filepaths = glob.glob(os.path.join(base_dir,speed, 'peaks_per_subject',"*.csv"))  
+    filenames = [os.path.basename(file) for file in filepaths]
+    for file in filenames:
+      base_dir_csv = os.path.join(base_dir,speed, 'peaks_per_subject',file)  
+      compare_dir_csv = os.path.join(compare_dir,speed, 'peaks_per_subject',file)  
+      base_df = pd.read_csv(base_dir_csv, index_col=False)
+      compare_df = pd.read_csv(compare_dir_csv, index_col=False)
+      diff_df = base_df.compare(compare_df)
+      diff_df.to_csv( os.path.join(base_dir,"diff_dir",speed+"_peaks_per_subject_"+file),index=False)
 
 ########################################################################################
 ########################################################################################
@@ -444,7 +471,6 @@ def run_cadence_filtered_everything():
     save_dir_gate_lengths = os.path.join(SAVE_DIR, "stats_of_gate_lengths")
     if not os.path.exists(save_dir_gate_lengths):
       os.mkdir(save_dir_gate_lengths)
-    print("sub_dirs", os.listdir(SAVE_DIR))
     start = datetime.datetime.now()
     df_gate_stats_cols = ['sensor','area', 'in-out', 'filename','trial', 'subjectID' ,'avg gate length (data points)', 'std', 'max', 'min', 'data points per file', 'vertical_gate_crossing' ]
     ##saves data
@@ -476,6 +502,9 @@ def run_cadence_filtered_everything():
 
 def run_everything():
   print("if your computer goes to sleep while this is running, the function will hang and never finish")
+  print("globals")
+  print(f"RIGHT_AVY_HEADER {RIGHT_AVY_HEADER}, LEFT_AVY_HEADER {LEFT_AVY_HEADER}")
+  print(f"FREQUENCY {FREQUENCY}, GATE_CROSSING {GATE_CROSSING}, DATA_DIR {DATA_DIR}")
   function_start = datetime.datetime.now()
   print("running", datetime.datetime.today().strftime('%Y-%m-%d'))
   ##load all data and filter it
@@ -503,6 +532,7 @@ def run_everything():
     ##doesn't save anything
     zero_crossing_lookup =calc_all_gate_crossings(metadata, data_lookup, gate_crossing = GATE_CROSSING)
     print("time: zero_crossing_lookup", (datetime.datetime.now()-start), "to run")  
+    data_points_lookup, ct_points_raw = calc_data_point_table(zero_crossing_lookup)
     save_dir_gate_lengths = os.path.join(SAVE_DIR, "stats_of_gate_lengths")
     if not os.path.exists(save_dir_gate_lengths):
       os.mkdir(save_dir_gate_lengths)
@@ -521,6 +551,8 @@ def run_everything():
                                                         fname_gate_length_file = "per_file_2std_filtered_outliers" , MAX_STD= 2, zero_crossing_lookup=zero_crossing_lookup)
     print("re-calculate the zero crossings with filter applied")
     print("took", (datetime.datetime.now()-start), "to run")
+    data_points_lookup, ct_points_filtered = calc_data_point_table(zero_crossing_lookup)
+    print("total points:","raw", ct_points_raw, "2std filtered", ct_points_filtered)
     run_everything1(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR)
     combined_legs= run_everything2(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR)
     plt.close()
@@ -553,6 +585,11 @@ def run_everything():
 
 
 if __name__=="__main__":
+  #.\py39\Scripts\activate.bat
+  #python gate_analysis.py > log.txt 2>&1
   run_everything()
-  compare_runs(r".\results\05_13_23", r".\results\05.17.23")
-
+  base_dir = r".\results\05.17.23"
+  compare_dir =  r".\results\05_13_23"
+  compare_runs(base_dir,compare_dir )
+  compare_combined_legs_test_t_and_wilcoxon(base_dir,compare_dir)
+  compare_peaks_per_subject(base_dir,compare_dir)

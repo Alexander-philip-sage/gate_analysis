@@ -112,6 +112,20 @@ def check_shape_zero_crossings(zero_gd, dstream):
       passed_zeros.append(zero_pair)
   return passed_zeros
 
+def calc_data_point_table(zero_crossing_lookup):
+  total_points = 0 
+  data_points = {}
+  for fname in list(zero_crossing_lookup.keys()):
+    data_points[fname] = {}
+    for side in ['right', 'left']:
+        zero_crossings = zero_crossing_lookup[fname][side]
+        points_p_gate = [x[1]-x[0] for x in zero_crossings]
+        points_p_gate = np.array(points_p_gate)   
+        ct_points = points_p_gate.sum()
+        data_points[fname][side] = ct_points
+        total_points+=ct_points
+  return data_points, total_points
+
 
 def calc_all_gate_crossings(metadata, data_lookup: dict, gate_crossing: float = GATE_CROSSING, gate_length_bounds: dict =None):
   '''detects gate crossings for each leg for every file. 
@@ -247,7 +261,6 @@ def stats_gate_lengths_by_file(metadata,data_lookup,  df_cols: List[str], save_d
           df_per_file = pd.concat([df_per_file, pd.DataFrame([row], columns=df_cols)])
     df_per_file.sort_values('std',inplace=True, ignore_index=True )
     save_fname = os.path.join(save_dir_gate_lengths,per_filename)
-    print("saving to", save_fname)
     df_per_file.to_csv(save_fname, index=False)
   print("saving file", fname_gate_length_file, " with gate length stats per file")
   return df_per_file, filter_to_gate_thresh

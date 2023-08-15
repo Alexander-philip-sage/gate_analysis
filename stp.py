@@ -46,7 +46,7 @@ def calc_shapiro_t_test_legs_combined(save_dir_nc):
     df_r = pd.read_csv(right_file)
     df_c = pd.concat([df_l, df_r])
     avg_cols = [x for x in df_c.columns if 'avg' in x]
-    print(comb_file_path)
+    #print(comb_file_path)
     calc_shapiro(data_s, data_t, data_w, comb_file_path, avg_cols, df_c, save_dir)
   
   df_s = pd.DataFrame(data_s, columns=['source', "inout", "data", "w_statistic", "p_value", 'avg', 'std'])
@@ -131,7 +131,6 @@ def add_data_gate_peak_valley_swing(sensor, metadata, data_lookup, zero_crossing
                   "max_swing_index":swing_index.max(), "min_swing_index":swing_index.min()
                   })
   data.append(row )
-
 def re_formatting_peak(base_dir = os.path.join('Analysis')):
   df=pd.DataFrame()
   for speed in ['normal', 'slow', 'fast']:
@@ -141,8 +140,10 @@ def re_formatting_peak(base_dir = os.path.join('Analysis')):
     df = pd.concat([df, df_p])
   sensors = list(df['source'].unique())
   new_table = []
+  test_type_data = []
   for sensor in sensors:
     row = [sensor]
+    test_row = [sensor]
     column_names = ['sensor']
     subdf = df[(df['source']==sensor)]
     for speed in ['normal', 'slow', 'fast']:
@@ -151,14 +152,20 @@ def re_formatting_peak(base_dir = os.path.join('Analysis')):
         column_names.append(speed+'_'+metric)
         assert len(subdf[cond]['p_value'].to_numpy())==1
         row.append(subdf[cond]['p_value'].iloc[0])
+        test_row.append(subdf[cond]['test_type'].iloc[0])
     new_table.append(row)
+    test_type_data.append(test_row)
   new_table= pd.DataFrame(new_table, columns=column_names)
   new_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'peak_valley_sim_stats.csv'), index=False)
+  test_type_table= pd.DataFrame(test_type_data, columns=column_names)
+  test_type_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'peak_valley_sim_stats_test_type.csv'), index=False)
 
   new_table = []
+  test_type_data = []
   sensors = list(df[df['data']=='avg_gate_length']['source'].unique())
   for sensor in sensors:
     row = [sensor]
+    test_row=[sensor]
     column_names = ['sensor']
     subdf = df[(df['source']==sensor)]
     for speed in ['normal', 'slow', 'fast']:
@@ -167,8 +174,13 @@ def re_formatting_peak(base_dir = os.path.join('Analysis')):
         column_names.append(speed+'_'+metric)
         assert len(subdf[cond]['p_value'].to_numpy())==1
         row.append(subdf[cond]['p_value'].iloc[0])
+        test_row.append(subdf[cond]['test_type'].iloc[0])
     new_table.append(row)
+    test_type_data.append(test_row)
   new_table= pd.DataFrame(new_table, columns=column_names)
   new_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'gate_swing_sim_stats.csv'), index=False)
+  test_type_table= pd.DataFrame(test_type_data, columns=column_names)
+  test_type_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'gate_swing_sim_stats_test_type.csv'), index=False)
+
 
 
