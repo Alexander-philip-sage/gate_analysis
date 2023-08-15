@@ -1,3 +1,0 @@
-# gate_analysis
-
-The data analysis for the paper was done using google-co-lab. The notebook that was used is included in this repo. The number of lines of code in the notebook got bigger than originally expected and it became less stable. The notebook would crash sometimes with its connection to the google vm. The data analysis itself was tested to be stably producing consistent results. To improve readability, professionalism, and maintainability we are currently migrating the notebook to this repo. The peak_valley_sim_stats.csv data differs from the csv created in the notebook. In the copying of functions between the envs a mistake must have been made. We will resolve this asap s.t. the two envs are identical. 

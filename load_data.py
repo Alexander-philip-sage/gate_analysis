@@ -1,12 +1,3 @@
-from global_variables import RIGHT_AVY_HEADER,LEFT_AVY_HEADER,  FREQUENCY, GATE_CROSSING, DATA_DIR, COLUMNS_BY_SENSOR, COLUMNS_TO_LEG, COLUMNS_TO_AREA, COLUMNS_TO_GRAPH
-import matplotlib.pyplot as plt
-import os
-import glob
-import datetime
-import pandas as pd
-import random
-from scipy.signal import correlate, find_peaks, butter, sosfilt
-from typing import List, Tuple
 def extract_trial_data(filename, verbose=False):
   end_part = filename.split('_')[1].replace('.csv','')
   subjectID_str = ''.join([x for x in end_part[:3] if x.isdigit()])
@@ -36,10 +27,6 @@ def check_indoor_and_outdoor(metadata):
   '''removes subjects from the dataset if they don't have at least one indoor
   and one outdoor file'''
   remove_subjectID = []
-  found_subjects = set(metadata['subjectID'].unique())
-  diff_subjects = set([i for i in range(1,31)]).difference(found_subjects)
-  if len(diff_subjects)>0:
-    print("expected 30 subjects. these were missing", diff_subjects)
   for _,subs in metadata.groupby(by=['subjectID']):
     if len(subs[subs.inout=='indoors'])==0 or len(subs[subs.inout=='outdoors'])==0:
       remove_subjectID.append(subs.subjectID.iloc[0])
@@ -47,11 +34,9 @@ def check_indoor_and_outdoor(metadata):
       print(subs[['filename', 'subjectID', 'inout', 'pace']])
   return metadata[~metadata.subjectID.isin(remove_subjectID)]
 
-
 def load_metadata(PACE, DATA_DIR):
   ##load all data files
   gate_files = [os.path.basename(x) for x in glob.glob(os.path.join(DATA_DIR,"*.csv"))]
-  assert len(gate_files)>0
   metadata_list = []
   for file in gate_files:
     subjectID, inout, pace, trial, timestamp = extract_trial_data(file, verbose=False)
@@ -60,9 +45,9 @@ def load_metadata(PACE, DATA_DIR):
   print("paces found in raw data", metadata['pace'].unique())
   ##filter on pace
   metadata = metadata.loc[metadata['pace']==PACE]
-  ##checks and removes incomplete data  
+  ##checks and removes incomplete data
   metadata = check_indoor_and_outdoor(metadata)
-  metadata.reset_index(inplace=True, drop=True)  
+  metadata.reset_index(inplace=True, drop=True)
   return metadata
 
 def remove_ends_data(df_p,remove_seconds: float =5, verbose=False):
@@ -78,7 +63,6 @@ def remove_ends_data(df_p,remove_seconds: float =5, verbose=False):
   if verbose:
     print("shape after removing intro and tail ", df_p.shape)
   return df_p
-  
 
 def low_pass_butterworth(df_b, N: int=4, Wn: float = 20):
   '''pd.options.mode.chained_assignment = None'''
@@ -92,6 +76,7 @@ def low_pass_butterworth(df_b, N: int=4, Wn: float = 20):
       dict_df[col] = df_b[col].to_numpy()
   return pd.DataFrame(dict_df)
 
+
 def load_data(filename:str, low_pass: bool = True, N: int=4, Wn:float=20):
   '''takes in only the filename, not the path'''
   df_a = pd.read_csv(os.path.join(DATA_DIR, filename), usecols=COLUMNS_TO_GRAPH)
@@ -103,13 +88,13 @@ def load_data(filename:str, low_pass: bool = True, N: int=4, Wn:float=20):
   
 def select_random_df(metadata,data_lookup ):
   subjectID_list = metadata['subjectID'].unique()
-  subjectID = subjectID_list[random.randint(0,len(subjectID_list)-1)] 
+  subjectID = subjectID_list[random.randint(0,len(subjectID_list)-1)]
   filenames = metadata[metadata.subjectID==subjectID]['filename'].to_numpy()
   filename = filenames[np.random.randint(low=0, high=(len(filenames)-1))]
   return data_lookup[filename]  , filename
 
-def generate_examples_of_butter_filter(SAVE_DIR, zero_crossing_lookup, metadata,  N:int = 4, Wn:float = 20, column:str = LEFT_AVY_HEADER):
-  ##grab a random file and a random gate
+def generate_examples_of_butter_filter(zero_crossing_lookup, metadata,  N:int = 4, Wn:float = 20, column:str = LEFT_AVY_HEADER):
+  '''  grab a random file and a random gate'''
   for i in range(20):
     random_int = random.randint(0,metadata.shape[0]-1)
     file = metadata['filename'].iloc[random_int]
@@ -137,3 +122,4 @@ def generate_examples_of_butter_filter(SAVE_DIR, zero_crossing_lookup, metadata,
       os.mkdir(filter_dir)
     image_name = file.replace(".csv", '')+ " center " +str(center)+'.png'
     fig.savefig(os.path.join(filter_dir, image_name) )
+
