@@ -104,6 +104,145 @@ def cadence_similarity_across_speeds(save=True):
   return df_compare, df_ivso
 
 
+def re_format_poincare_sim_stats(base_dir = os.path.join('Analysis')):
+  df=pd.DataFrame()
+  for speed in ['normal', 'slow', 'fast']:
+    load_dir = os.path.join(base_dir, speed,'poincare', 'per_subject')
+    df_p = pd.read_csv(os.path.join(load_dir, 'poincare_sim_stats_per_sensor.csv'))
+    df_p['pace']=speed
+    df = pd.concat([df, df_p])
+  sensors = list(df['sensor'].unique())
+  new_table = []
+  test_type_table = []
+  for sensor in sensors:
+    subdf = df[(df['sensor']==sensor)&(df['inout']=='outdoors')]
+    row = [sensor]
+    test_type_row = [sensor]
+    column_names = ['sensor']
+    test_type_names = ['sensor']
+    for speed in ['normal', 'slow', 'fast']:
+      for sd in ['sd1', 'sd2']:
+        test_type_row.append(subdf[(subdf['source']==sd)&(subdf['pace']==speed)]['test_type'].iloc[0])
+        test_type_names.append(speed +' '+sd)
+        for metric in ['p_value', 'z_score']:
+          column_names.append(speed +' '+sd+' '+metric)
+          cond = (subdf['source']==sd)&(subdf['pace']==speed)
+          val=subdf[cond][metric].iloc[0]
+          row.append(val)
+    new_table.append(row)
+    test_type_table.append(test_type_row)
+  new_table= pd.DataFrame(new_table, columns=column_names)
+  new_table.to_csv(os.path.join(base_dir, 'trends_across_pace', 'poincare_sim_stats.csv'), index=False)
+  test_table= pd.DataFrame(test_type_table, columns=test_type_names)
+  test_table.to_csv(os.path.join(base_dir, 'trends_across_pace', 'poincare_sim_stats_test_types.csv'), index=False)
+def re_formatting_peak(base_dir = os.path.join('Analysis')):
+  df=pd.DataFrame()
+  for speed in ['normal', 'slow', 'fast']:
+    load_dir = os.path.join(base_dir, speed,'peaks_per_subject', 'gaussian_analysis')
+    df_p = pd.read_csv(os.path.join(load_dir, 'combined_legs_test_t_and_wilcoxon.csv'))
+    df_p['pace']=speed
+    df = pd.concat([df, df_p])
+  sensors = list(df['source'].unique())
+  new_table = []
+  test_type_data = []
+  for sensor in sensors:
+    row = [sensor]
+    test_row = [sensor]
+    column_names = ['sensor']
+    subdf = df[(df['source']==sensor)]
+    for speed in ['normal', 'slow', 'fast']:
+      for metric in ['avg_peak',  'avg_range','avg_valley']:
+        cond = (subdf['data']==metric)&(subdf['pace']==speed)
+        column_names.append(speed+'_'+metric)
+        assert len(subdf[cond]['p_value'].to_numpy())==1
+        row.append(subdf[cond]['p_value'].iloc[0])
+        test_row.append(subdf[cond]['test_type'].iloc[0])
+    new_table.append(row)
+    test_type_data.append(test_row)
+  new_table= pd.DataFrame(new_table, columns=column_names)
+  new_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'peak_valley_sim_stats.csv'), index=False)
+  test_type_table= pd.DataFrame(test_type_data, columns=column_names)
+  test_type_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'peak_valley_sim_stats_test_type.csv'), index=False)
+
+  new_table = []
+  test_type_data = []
+  sensors = list(df[df['data']=='avg_gate_length']['source'].unique())
+  for sensor in sensors:
+    row = [sensor]
+    test_row=[sensor]
+    column_names = ['sensor']
+    subdf = df[(df['source']==sensor)]
+    for speed in ['normal', 'slow', 'fast']:
+      for metric in ['avg_swing_index','avg_gate_length']:
+        cond = (subdf['data']==metric)&(subdf['pace']==speed)
+        column_names.append(speed+'_'+metric)
+        assert len(subdf[cond]['p_value'].to_numpy())==1
+        row.append(subdf[cond]['p_value'].iloc[0])
+        test_row.append(subdf[cond]['test_type'].iloc[0])
+    new_table.append(row)
+    test_type_data.append(test_row)
+  new_table= pd.DataFrame(new_table, columns=column_names)
+  new_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'gate_swing_sim_stats.csv'), index=False)
+  test_type_table= pd.DataFrame(test_type_data, columns=column_names)
+  test_type_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'gate_swing_sim_stats_test_type.csv'), index=False)
+
+
+def re_format_distance_sim(base_dir = os.path.join('Analysis')):
+  df=pd.DataFrame()
+  for speed in ['normal', 'slow', 'fast']:
+    load_dir = os.path.join(base_dir, speed,'combined_subjects_and_trials_and_legs')
+    df_p = pd.read_csv(os.path.join(load_dir, 'signal_similarity_combined_legs.csv'))
+    df_p['pace']=speed
+    df = pd.concat([df, df_p])
+  sensors = list(df['sensor'].unique())
+  new_table = []
+  for sensor in sensors:
+    subdf = df[(df['sensor']==sensor)]
+    row = [sensor]
+    test_type_row = [sensor]
+    column_names = ['sensor' ]
+    for speed in ['normal', 'slow', 'fast']:
+      assert len(subdf[subdf['pace']==speed]['cosine_similarity'].to_numpy())==1
+      row.extend([subdf[subdf['pace']==speed]['cosine_similarity'].iloc[0], subdf[subdf['pace']==speed]['euclidean_distance'].iloc[0]])
+      column_names.extend([speed+'_cosine', speed+'_euclidean'])
+    new_table.append(row)
+  new_table= pd.DataFrame(new_table, columns=column_names)
+  new_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'cos_euclidean_sim_stats.csv'), index=False)
+
+
+def re_format_paired_comparison(base_dir = os.path.join('Analysis')):
+  df=pd.DataFrame()
+  for speed in ['normal', 'slow', 'fast']:
+    load_dir = os.path.join(base_dir, speed,'similarity_per_subject')
+    df_p = pd.read_csv(os.path.join(load_dir, 'lr_control_compare_lio_rio.csv'))
+    df_p['pace']=speed
+    df = pd.concat([df, df_p])
+  sensors = list(df['sensor'].unique())
+  new_table = []
+  data_columns = [ 'lrc_i.vs.o_cosine_similarity_test_p_value',
+                  'lrc_i.vs.o_cosine_similarity_z_score',
+                  'lrc_i.vs.o_euclidean_distance_test_p_value',
+                  'lrc_i.vs.o_euclidean_distance_z_score']
+  test_type_data = []
+  for sensor in sensors:
+    subdf = df[(df['sensor']==sensor)]
+    row = [sensor]
+    test_row = [sensor]
+    column_names = ['sensor' ]
+    test_names = ['sensor' ]
+    for speed in ['normal', 'slow', 'fast']:
+      test_names.append(speed)
+      test_row.append(subdf[subdf['pace']==speed]['test_type'].iloc[0])
+      for head in data_columns:
+        assert len(subdf[subdf['pace']==speed][head].to_numpy())==1,subdf[head].to_numpy()
+        row.append(subdf[subdf['pace']==speed][head].iloc[0])
+        column_names.append(speed+'_'+head)
+    new_table.append(row)
+    test_type_data.append(test_row)
+  new_table= pd.DataFrame(new_table, columns=column_names)
+  new_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'paired_comparison_sim_stats.csv'), index=False)
+  test_type_table= pd.DataFrame(test_type_data, columns=test_names)
+  test_type_table.to_csv(os.path.join(base_dir,'trends_across_pace', 'paired_comparison_sim_stats_test_types.csv'), index=False)
 
 
 

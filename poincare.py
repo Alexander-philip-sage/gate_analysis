@@ -1,3 +1,6 @@
+##https://sciendo.com/article/10.2478/slgr-2013-0031
+
+
 def poincare(nni=None,
 			 rpeaks=None,
 			 show=True,
@@ -263,11 +266,66 @@ def poincare_sim_stats_per_sensor(SAVE_DIR, alpha = 0.05):
   poin_stats = pd.DataFrame(poin_stats_data)
   poin_stats.to_csv(os.path.join(lookup_dir, 'poincare_sim_stats_per_sensor.csv'), index=False)
 
+def poincare_z_score_cohens_d(indoors, outdoors):
+  indoors_std = indoors.std()
+  outdoors_mean=outdoors.mean()
+  indoors_mean= indoors.mean()
+  #print("indoor mean", indoors_mean, "std", indoors_std)
+  z_score =  (outdoors_mean-indoors_mean)/indoors_std
+  cohens_d = (outdoors_mean-indoors_mean)/np.sqrt((indoors_std**2+outdoors.std()**2)/2)
+  return z_score, cohens_d
+def load_poincare_data(save_dir):
+  list_dirs = [x for x in os.listdir(save_dir) if 'left' not in x]
+  list_dirs = [x for x in list_dirs if 'right' not in x]
+  list_dirs = [x for x in list_dirs if os.path.isdir(os.path.join(save_dir,x))]
+  print("dirs looking in", save_dir)
+  print(list_dirs)
+  all_poincare_stats = pd.DataFrame()
+  for dr in list_dirs:
+    csv = glob.glob(os.path.join(save_dir, dr, "*.csv"))
+    all_poincare_stats = pd.concat([all_poincare_stats, pd.read_csv(csv[0])])
+  return all_poincare_stats
 
+def indoor_outdoor_similarity(indoors, outdoors, col, alpha):
+  z_score, cohens_d=poincare_z_score_cohens_d(indoors, outdoors)
+  shapiro_statistic_indoors, p_indoors = shapiro(indoors)
+  shapiro_statistic_outdoors, p_outdoors = shapiro(outdoors)
+  if (p_indoors >alpha) and (p_outdoors> alpha):
+    test_stat, p_value=calc_t_test_poincare(indoors, outdoors)
+    test_type='t_test'
+  else:
+    test_stat, p_value=calc_wilcoxon_poincare(indoors, outdoors)
+    test_type='wilcoxon'
+  indoor_row = {'source':col,'inout':'indoors', 'avg':indoors.mean(), 'std':indoors.std(), 'shapiro_stat':shapiro_statistic_indoors,
+                'shapiro_p_val':p_indoors}
+  outdoor_row = {'source':col,'inout':'outdoors', 'avg':outdoors.mean(), 'std':outdoors.std(), 'shapiro_stat':shapiro_statistic_outdoors,
+                'shapiro_p_val':p_outdoors, 'test_type':test_type, 'stat':test_stat, 'p_value':p_value,
+                'z_score':z_score, "cohens_d":cohens_d}
+  return [indoor_row, outdoor_row]
 
-
-
-
-
+def calc_wilcoxon_poincare(indoors, outdoors):
+  alternative = 'two-sided'
+  zero_method = 'wilcox'
+  w_statistic, p_value = wilcoxon(indoors, outdoors,alternative=alternative,  zero_method= zero_method)
+  return w_statistic, p_value
+def calc_t_test_poincare(indoors, outdoors):
+  alternative = 'two-sided'
+  ttest = ttest_rel
+  t_statistic, p_value = ttest(indoors, outdoors,alternative=alternative )
+  return t_statistic, p_value
+def calculate_poincare_stats(alpha = 0.05):
+  '''calc poincare using the values from each signal as the data for the lists
+  to compare indoor and outdoor'''
+  save_dir = os.path.join(SAVE_DIR, 'poincare')
+  all_poincare_data= load_poincare_data(save_dir)
+  poin_stats_data = []
+  for col in ['sd1', 'sd2']:
+    indoors = all_poincare_data[all_poincare_data['inout']=='indoors'][col].values
+    outdoors = all_poincare_data[all_poincare_data['inout']=='outdoors'][col].values
+    poin_stats_data.extend(indoor_outdoor_similarity(indoors, outdoors, col, alpha))
+  poin_stats = pd.DataFrame(poin_stats_data)
+  poin_stats.to_csv(os.path.join(save_dir, 'poincare_sim_stats.csv'), index=False)
+  #print("indoor mean", indoors.mean(), "std", indoors.std())
+  return poin_stats
 
 
