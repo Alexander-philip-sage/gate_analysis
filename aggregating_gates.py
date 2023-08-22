@@ -1,7 +1,9 @@
 import os, datetime, pickle
 import numpy as np
 import pandas as pd
-
+from scipy.interpolate import interp1d
+from typing import List, Tuple
+from scipy.spatial import distance
 ################NORMALIZING AND CHECKING GATES########
 def grab_normalized_gate(df: pd.core.frame.DataFrame, zero_crossings: List[Tuple[int]], gate_ind:int , header:str):
   '''grabs the gate at the index given and normalizes the data points to 100'''

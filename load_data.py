@@ -1,8 +1,11 @@
 import os, datetime, pickle
 import numpy as np
 import pandas as pd
-
-
+from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER
+from globals import COLUMNS_TO_GRAPH, COLUMNS_TO_AREA, COLUMNS_TO_LEG, COLUMNS_BY_SENSOR
+import glob
+from scipy.signal import correlate, find_peaks, butter, sosfilt
+import random
 def extract_trial_data(filename, verbose=False):
   end_part = filename.split('_')[1].replace('.csv','')
   subjectID_str = ''.join([x for x in end_part[:3] if x.isdigit()])

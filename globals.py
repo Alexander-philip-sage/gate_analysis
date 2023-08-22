@@ -1,3 +1,4 @@
+
 RIGHT_AVY_HEADER = 'Angular Velocity Y (rad/s).2'
 LEFT_AVY_HEADER = 'Angular Velocity Y (rad/s).3'
 COLUMNS_TO_GRAPH = ['Acceleration Y (m/s^2)',  'Angular Velocity Y (rad/s)',##right thigh

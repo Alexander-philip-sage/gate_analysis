@@ -1,7 +1,15 @@
 import os, datetime, pickle
 import numpy as np
+from typing import List, Tuple
 import pandas as pd
-
+import matplotlib.pyplot as plt
+from scipy.signal import correlate, find_peaks, butter, sosfilt
+from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER
+from globals import COLUMNS_TO_GRAPH, COLUMNS_TO_AREA, COLUMNS_TO_LEG, COLUMNS_BY_SENSOR
+from load_data import extract_trial_data, load_data
+from collections import Counter
+from aggregating_gates import label_axis
+import random
 def find_swing_stance_index(signal, min_percent=35):
   '''finds the peak right before the valley of the angular velocity y
   data stream.
@@ -414,8 +422,7 @@ def graph_gate_crossing_summary(subjectID, sensor, df_filtered, gate_ind, zero_c
   sensor = sensor.replace("/", "-")
   fig.savefig(os.path.join(SUMMARY_DIR, f'subject_{subjectID}_2gate_detection_{sensor}.png'))
 
-
-  def graph_summary_avg(subjectID, sensor, indoors):
+def graph_summary_avg(subjectID, sensor, indoors):
   all_gates = aggregate_single_subject(data_lookup, metadata, zero_crossing_lookup, sensor, indoors , subjectID)
   avg = all_gates.mean(axis=0)
   std = all_gates.std(axis=0)

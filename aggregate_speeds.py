@@ -1,7 +1,10 @@
 import os, datetime, pickle
 import numpy as np
 import pandas as pd
-
+import glob
+from scipy.stats import shapiro, ttest_rel, wilcoxon
+from poincare  import poincare_z_score_cohens_d, calc_t_test_poincare, calc_wilcoxon_poincare
+from poincare import indoor_outdoor_similarity
 def one_subject_summary(subjectID):
   rows = []
   for speed in ['slow', 'normal','fast']:

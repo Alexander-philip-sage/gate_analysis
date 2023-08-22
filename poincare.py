@@ -1,7 +1,20 @@
 ##https://sciendo.com/article/10.2478/slgr-2013-0031
-
+#!pip install pyhrv
+import pyhrv
+import pyhrv.nonlinear as nl
+import biosppy
+from biosppy.signals.ecg import ecg
+import matplotlib as mpl
 import os, datetime, pickle
 import numpy as np
+import time
+import matplotlib.pyplot as plt
+from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER
+from globals import COLUMNS_TO_GRAPH, COLUMNS_TO_AREA, COLUMNS_TO_LEG, COLUMNS_BY_SENSOR
+from similarity import combine_legs_single_subject
+import pandas as pd
+import glob
+from scipy.stats import shapiro, ttest_rel, wilcoxon
 def poincare(nni=None,
 			 rpeaks=None,
 			 show=True,
