@@ -30,7 +30,7 @@ tmp = COLUMNS_BY_SENSOR.copy()
 for d in tmp:
    COLUMNS_BY_SENSOR.append({'sensor':d['sensor'], 'right':d['right'].replace('Y','X'), 'left':d['left'].replace('Y','X')})
    COLUMNS_BY_SENSOR.append({'sensor':d['sensor'], 'right':d['right'].replace('Y','Z'), 'left':d['left'].replace('Y','Z')})
-
+'''
 import os
 import glob
 import datetime
@@ -55,9 +55,7 @@ import pyhrv
 import pyhrv.nonlinear as nl
 import biosppy
 from biosppy.signals.ecg import ecg
-import matplotlib as mpl
-print("pyhrv package version",pyhrv.__version__)
-print("biosppy package version",biosppy.__version__)
+import matplotlib as mpl'''
 DATA_DIR = 'raw_data_2023.01.31'#'Text_File/Master_Data--TD_1-30_CSVFiles/Subjects_1-30-inw1_through_osw1'
 GATE_CROSSING = -0.3
 FREQUENCY = 128

@@ -4,6 +4,14 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from typing import List, Tuple
 from scipy.spatial import distance
+from load_data import select_random_df
+import matplotlib.pyplot as plt
+from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER
+from globals import COLUMNS_TO_GRAPH, COLUMNS_TO_AREA, COLUMNS_TO_LEG, COLUMNS_BY_SENSOR
+import random
+from scipy.stats import shapiro, ttest_rel, wilcoxon
+import glob
+from gate_crossings import find_swing_stance_index, avg_std_gate_lengths, max_peak, find_lowest_valley
 ################NORMALIZING AND CHECKING GATES########
 def grab_normalized_gate(df: pd.core.frame.DataFrame, zero_crossings: List[Tuple[int]], gate_ind:int , header:str):
   '''grabs the gate at the index given and normalizes the data points to 100'''

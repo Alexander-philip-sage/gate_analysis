@@ -15,6 +15,9 @@ from similarity import combine_legs_single_subject
 import pandas as pd
 import glob
 from scipy.stats import shapiro, ttest_rel, wilcoxon
+print("pyhrv package version",pyhrv.__version__)
+print("biosppy package version",biosppy.__version__)
+
 def poincare(nni=None,
 			 rpeaks=None,
 			 show=True,
