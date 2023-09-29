@@ -13,7 +13,7 @@ from scipy.stats import shapiro, ttest_rel, wilcoxon
 import glob
 import statsmodels.api as sm
 import time
-from gate_crossings import find_swing_stance_index, avg_std_gate_lengths, max_peak, find_lowest_valley
+from peaks_valley_swing import find_swing_stance_index, avg_std_gate_lengths, max_peak, find_lowest_valley
 ################NORMALIZING AND CHECKING GATES########
 def grab_normalized_gate(df: pd.core.frame.DataFrame, zero_crossings: List[Tuple[int]], gate_ind:int , header:str):
   '''grabs the gate at the index given and normalizes the data points to 100'''
@@ -184,7 +184,7 @@ def each_subject_one_sensor(save_dir, data_lookup, metadata, zero_crossing_looku
     plt.close()
 def inout_each_subject(save_dir, data_lookup, metadata, zero_crossing_lookup, column_to_graph):
   for i, inout in enumerate(['indoors', 'outdoors']):
-    local_dir = column_to_graph.replace(os.path.sep, '-') + '_'+COLUMNS_TO_AREA[column_to_graph]+"_"+inout
+    local_dir = column_to_graph.replace(os.path.sep, '-').replace('/', '-') + '_'+COLUMNS_TO_AREA[column_to_graph]+"_"+inout
     local_path = os.path.join(save_dir, local_dir)
     if not os.path.exists(local_path):
       os.mkdir(local_path)
@@ -209,7 +209,7 @@ def save_sensor_data(save_dir, data_lookup, metadata, zero_crossing_lookup, colu
     df_sensor_subject = pd.concat([df_sensor_subject,row ])
     ax.plot(avg, label=str(subjectID))
   _= ax.set_title(column_to_graph+ ' '+COLUMNS_TO_AREA[column_to_graph] + ' ' + inout)
-  filename = column_to_graph.replace(os.path.sep, '-').replace(' ','_') + '_' + COLUMNS_TO_AREA[column_to_graph] + '_' + inout+'.csv'
+  filename = column_to_graph.replace(os.path.sep, '-').replace('/', '-').replace(' ','_') + '_' + COLUMNS_TO_AREA[column_to_graph] + '_' + inout+'.csv'
   df_sensor_subject.to_csv(os.path.join(save_dir,filename), index=False)
   fig.savefig(os.path.join(save_dir,filename.replace('.csv', '.png')))
   plt.close()
@@ -261,7 +261,7 @@ def add_data_gate_peak_valley_swing(sensor, metadata, data_lookup, zero_crossing
 def gate_peak_valley_swing_save_data(columns_pkvgs, save_dir, sensor, metadata, data_lookup, zero_crossing_lookup ):
   assert len(metadata['pace'].unique())==1
   pace=metadata['pace'].unique()[0]
-  df_filename = sensor.replace(os.path.sep, '-')+'_'+pace
+  df_filename = sensor.replace(os.path.sep, '-').replace('/', '-')+'_'+pace
   data = []
   leg = COLUMNS_TO_LEG[sensor]
   area = COLUMNS_TO_AREA[sensor]
@@ -510,7 +510,7 @@ def graph_sensors_combined_subjects_trials(save_dir, data_lookup, metadata, zero
       ax[i].fill_between(np.arange(0,100), avg-std, avg+std, alpha=0.4, color='gray')
       title = column_to_graph+ ' '+COLUMNS_TO_AREA[column_to_graph]
       _= ax[i].set_title(title + ' ' + inout)
-    fig.savefig(os.path.join(save_dir,title.replace(os.path.sep, '-')+'.png'))
+    fig.savefig(os.path.join(save_dir,title.replace(os.path.sep, '-').replace('/', '-')+'.png'))
 
 def combined_subjects_trials_signal_stats(data_lookup, metadata, zero_crossing_lookup, save_dir):
   print("all values presented are done by analyzing a list of size ~9,198. Where each element in the list is a gate profile. Meaning the average min is the average of ~9,198 minimum values")
@@ -629,8 +629,8 @@ def graph_aggregate_subjects_trials_legs(save_dir, data_lookup, metadata: pd.cor
       #ax[i].fill_between(np.arange(0,100), avg-std, avg+std, alpha=0.4, color='gray')
 
       #ax[i].set_title(inout+" "+"mean"+" " +sensor_name)
-    fig.savefig(os.path.join(save_dir,title.replace(os.path.sep, '-')+'.png'))
-    fig2.savefig(os.path.join(save_dir,title2.replace(os.path.sep, '-')+'.png'))
+    fig.savefig(os.path.join(save_dir,title.replace(os.path.sep, '-').replace('/', '-')+'.png'))
+    fig2.savefig(os.path.join(save_dir,title2.replace(os.path.sep, '-').replace('/', '-')+'.png'))
   return combined_legs
 
 ###############CADENCE#####################
@@ -658,7 +658,7 @@ def cadence_per_subject(save_dir,metadata, zero_crossing_lookup, add_dir='stats_
       row = {"sensor":sensor, "leg":leg, "subjectID": subjectID, 'inout':inout,
              "cadence_avg_step_p_minute":cmean,"cadence_std":cstd,"cadence_max":cmax,"cadence_min":cmin  }
       df_cadence = pd.concat([df_cadence, pd.DataFrame([row])])
-  df_cadence.to_csv(os.path.join(save_dir, "per_subject_"+sensor.replace(os.path.sep, "-").replace(" ", '')+'_'+leg+".csv"))
+  df_cadence.to_csv(os.path.join(save_dir, "per_subject_"+sensor.replace('/', "-").replace(os.path.sep, "-").replace(" ", '')+'_'+leg+".csv"))
   return df_cadence
 
 def hist_cadence():

@@ -5,7 +5,7 @@ import pyhrv.nonlinear as nl
 import biosppy
 from biosppy.signals.ecg import ecg
 import matplotlib as mpl
-import os, datetime, pickle
+import os,   sys
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -15,10 +15,12 @@ from globals import COLUMNS_TO_GRAPH, COLUMNS_TO_AREA, COLUMNS_TO_LEG, COLUMNS_B
 from similarity import combine_legs_single_subject
 import pandas as pd
 import glob
+import scipy
 from scipy.stats import shapiro, ttest_rel, wilcoxon
+print (sys.version)
 print("pyhrv package version",pyhrv.__version__)
 print("biosppy package version",biosppy.__version__)
-
+print("scipy package version",scipy.__version__)
 def poincare(nni=None,
 			 rpeaks=None,
 			 show=True,
@@ -169,7 +171,7 @@ def graph_poincare_per_leg(data_lookup, metadata, zero_crossing_lookup, sensor, 
   ''' for single sensor, for indoors and out, for each subject do poincare on the
   avg signal '''
   area=COLUMNS_TO_AREA[sensor]
-  save_dir = os.path.join(save_dir,sensor.replace(os.path.sep, "-").replace(" ", '')+'_'+area.replace(' ',"_"))
+  save_dir = os.path.join(save_dir,sensor.replace('/', "-").replace('/', "-").replace(os.path.sep, "-").replace(" ", '')+'_'+area.replace(' ',"_"))
   if not os.path.exists(save_dir):
     os.mkdir(save_dir)
   data_poincare=[]
@@ -179,7 +181,7 @@ def graph_poincare_per_leg(data_lookup, metadata, zero_crossing_lookup, sensor, 
       all_gates = aggregate_single_subject(data_lookup, metadata, zero_crossing_lookup, sensor, inout , subjectID)
       avg =all_gates.mean(axis=0)
       title = "{} {} {} subjectID: {}".format(sensor,area, inout,subjectID)
-      figname = "{}_{}_{}_{}.png".format(sensor.replace(os.path.sep, "-"),area, inout,subjectID)
+      figname = "{}_{}_{}_{}.png".format(sensor.replace('/', "-").replace(os.path.sep, "-"),area, inout,subjectID)
       results = poincare(avg, title=title, show=False)
       fig = results['poincare_plot']
       columns = ['sensor','area','inout', 'subjectID', 'sd1', 'sd2', 'sd_ratio', 'ellipse_area']
@@ -196,7 +198,7 @@ def graph_poincare_per_leg(data_lookup, metadata, zero_crossing_lookup, sensor, 
 def graph_poincare_comb_leg_per_sensor(combined_legs, sensor, save_dir_m, ylim=None, xlim=None):
   ''' for single sensor - combined across legs, for indoors and out, aggregate
   across all subjects do poincare on the avg signal '''
-  save_dir = os.path.join(save_dir_m,sensor.replace(os.path.sep, "-").replace(" ", '').replace("^",'-'))
+  save_dir = os.path.join(save_dir_m,sensor.replace('/', "-").replace(os.path.sep, "-").replace(" ", '').replace("^",'-'))
   #print("saving at",save_dir)
   if not os.path.exists(save_dir):
     os.mkdir(save_dir)
@@ -204,7 +206,7 @@ def graph_poincare_comb_leg_per_sensor(combined_legs, sensor, save_dir_m, ylim=N
   for inout in ['indoors', 'outdoors']:
     avg_signal = combined_legs[sensor][inout]['avg']
     title = "{} {}".format(sensor, inout)
-    figname = "{}_{}.png".format(sensor.replace(os.path.sep, "-"), inout)
+    figname = "{}_{}.png".format(sensor.replace('/', "-").replace(os.path.sep, "-"), inout)
     results = poincare(avg_signal, title=title, show=False, ylim=ylim, xlim=xlim)
     fig = results['poincare_plot']
     columns = ['sensor','inout', 'sd1', 'sd2', 'sd_ratio', 'ellipse_area']

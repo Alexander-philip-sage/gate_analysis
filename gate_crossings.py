@@ -10,54 +10,7 @@ from load_data import extract_trial_data, load_data
 from collections import Counter
 from aggregating_gates import label_axis, aggregate_single_subject
 import random
-def find_swing_stance_index(signal, min_percent=35):
-  '''finds the peak right before the valley of the angular velocity y
-  data stream.
-  input: signal from a single gate
-  returns: index and value'''
-  min_index = int(min_percent*len(signal)/100)
-  max_index, valley_value = find_lowest_valley(signal)
-  peak_indices = find_peaks(signal)[0]
-  possible_stance_change_index = []
-  edge_start = 3
-  edge_end = len(signal)-edge_start -1
-  for x in peak_indices:
-    if (edge_end > x > edge_start) and (max_index > x > min_index):
-      possible_stance_change_index.append(x)
-  peak_values = [signal[x] for x in possible_stance_change_index]
-  if len(peak_values)==0:
-    #plt.plot(signal)
-    #pname = "signal_np.pickle"
-    #with open(pname, 'wb') as fileobj:
-    #  pickle.dump(np.array(signal),fileobj )
-    raise ValueError("couldn't find peak.min index {} max index {} peak indices ".format(min_index,max_index)+str(peak_indices))
-
-  stance_change_index =  possible_stance_change_index[peak_values.index(max(peak_values))]
-  stance_change_value = signal[stance_change_index]
-  return stance_change_index, stance_change_value
-
-def find_lowest_valley(signal):
-  '''finds the min peak in a signal.
-  returns the x,y values from that signal where the min peak is'''
-  assert (type(signal)==list or type(signal)==np.ndarray)
-  inv_signal = -1*signal
-  peak_indices = find_peaks(inv_signal)[0]
-  edge_start = 1
-  edge_end = len(signal)-edge_start -1
-  peak_indices = [x for x in peak_indices if (edge_start < x < edge_end)]
-  peak_values = [signal[x] for x in peak_indices]
-  min_index =peak_values.index(min(peak_values))
-  return peak_indices[min_index],peak_values[min_index]
-
-def max_peak(signal, edge_start = 3):
-  '''finds the max peak in a signal.
-  returns the x,y values from that signal where the max peak is'''
-  peak_indices = find_peaks(signal)[0]
-  edge_end = len(signal)-edge_start -1
-  peak_indices = [x for x in peak_indices if (edge_start < x < edge_end)]
-  peak_values = [signal[x] for x in peak_indices]
-  max_index =peak_values.index(max(peak_values))
-  return peak_indices[max_index],peak_values[max_index]
+from peaks_valley_swing import find_swing_stance_index, avg_std_gate_lengths, max_peak, find_lowest_valley
 
 def extract_gate_crossings(df: pd.core.frame.DataFrame, header:str, gate_crossing: float = -0.6) -> List[int]:
   '''input
@@ -165,10 +118,7 @@ def graph_zero_crossings(zero_crossings: List[Tuple[int]], avy_data,filename:str
         graph_limit -=1
         if graph_limit==0:
           break
-def avg_std_gate_lengths(zero_crossings: List[Tuple[int]]):
-  points_p_gate = [x[1]-x[0] for x in zero_crossings]
-  points_p_gate = np.array(points_p_gate)
-  return  points_p_gate.mean() , points_p_gate.std(), points_p_gate.max(), points_p_gate.min()
+
 
 def hist_gate_lengths(zero_crossing: List[Tuple[int]]):
   avg, std , m, n = avg_std_gate_lengths(zero_crossing)
@@ -216,11 +166,12 @@ def graphing_gate_crossing_thresholds(stats_df: pd.core.frame.DataFrame, save_di
       ax[i].set_ylabel("gate size (data points)")
       title = column_to_graph+ ' '+COLUMNS_TO_AREA[column_to_graph]
       _= ax[i].set_title( title+ ' ' + inout)
-      fig.savefig(os.path.join(save_dir_gate_lengths,title.replace(os.path.sep, '-')+'.png'))
+      fig.savefig(os.path.join(save_dir_gate_lengths,title.replace(os.path.sep, '-').replace('/', '-')+'.png'))
 def stats_gate_lengths_by_file(metadata,data_lookup,  df_cols: List[str], save_dir_gate_lengths: str, fname_gate_length_file: str = "per_file", MAX_STD: float = 2, zero_crossing_lookup: dict =None):
   '''for each of the two main sensors, create a csv with the gate length
     stats for each file, also track the thresholds for each file of what
     defines an outlier'''
+  assert os.path.exists(save_dir_gate_lengths), f"save dir should exist {save_dir_gate_lengths}"
   filter_to_gate_thresh = {}
   for filename in metadata['filename']:
     filter_to_gate_thresh[filename] = {}
@@ -229,7 +180,7 @@ def stats_gate_lengths_by_file(metadata,data_lookup,  df_cols: List[str], save_d
     zero_crossing_lookup=calc_all_gate_crossings(metadata, gate_crossing = GATE_CROSSING)
   for sensor_cols in [RIGHT_AVY_HEADER, LEFT_AVY_HEADER]:
     df_per_file = pd.DataFrame([], columns =df_cols )
-    per_filename =fname_gate_length_file+'_'+ sensor_cols.replace(os.path.sep, '-')+".csv"
+    per_filename =fname_gate_length_file+'_'+ sensor_cols.replace('/', '-')+".csv"
     for i, inout in enumerate(['indoors', 'outdoors']):
       for x in metadata[metadata['inout']==inout].groupby(by=['subjectID', 'pace']):
         df_trials=x[1]
@@ -276,63 +227,6 @@ def plot_gate_lengths_p_subject(filename,save_dir_gate_lengths):
   fig.savefig(os.path.join(save_dir_gate_lengths,"std-avg_outlier_graph_"+df_gate_lengths['area'].iloc[0]+".png"))
   return df_gate_lengths
 
-
-#########SUMMARIZING DATA REMOVED/MISSION###############
-def find_missing(condition, name, metadata, PACE):
-  one_to_thirty = set([x for x in range(1,31)])
-  subjects_found = set(metadata[condition]['subjectID'].unique())
-  subjects_missing = one_to_thirty.difference(subjects_found)
-  print(PACE)
-  print(name)
-  print("subjects missing", subjects_missing)
-
-def count_data_points_saved(metadata, zero_crossing_lookup):
-  columns = ['filename', 'subjectID', 'inout', 'pace', 'trial', 'sensor', 'raw_data_points', 'good_data_points', 'percent_good']
-  data = []
-  for i, row in metadata.iterrows():
-    filename = row.filename
-    df_raw = load_data(filename)
-    raw_data_points = df_raw.shape[0]
-    for sensor in [LEFT_AVY_HEADER, RIGHT_AVY_HEADER]:
-      new_row = {}
-      #print("sensor", sensor)
-      #t=data_lookup[filename][sensor]
-      #t=t.dropna()
-      #raw_data_points = len(t)
-      zero_crossings=zero_crossing_lookup[filename][COLUMNS_TO_LEG[sensor]]
-      gates = [tup[1]-tup[0] for tup in zero_crossings]
-      data_points_saved = sum(gates)
-      if raw_data_points<data_points_saved:
-        print(zero_crossings)
-        print(data_points_saved)
-        print(raw_data_points)
-        print("max", max(gates))
-        return
-      new_row['raw_data_points'] = raw_data_points
-      new_row['good_data_points'] = data_points_saved
-      new_row['percent_good']=round(data_points_saved*100/raw_data_points,2)
-      new_row['sensor']=sensor
-      new_row['filename']=filename
-      new_row['subjectID']= row['subjectID']
-      new_row['inout']=row['inout']
-      new_row['pace']=row['pace']
-      new_row['trial']=row['trial']
-      data.append(new_row)
-  df_good_data_ct = pd.DataFrame(data)
-  return df_good_data_ct
-
-def describe_sensors(good_points_df):
-  sensors = list(good_points_df['sensor'].unique())
-  for sensor in sensors:
-    sub_df = good_points_df[good_points_df['sensor']==sensor]
-    print(sensor)
-    print("avg", round(sub_df['percent_good'].mean(),2))
-    print("std", round(sub_df['percent_good'].std(),2))
-    print("max", sub_df['percent_good'].max())
-    print("min", sub_df['percent_good'].min())
-print("indoors and outdoors")
-describe_sensors()
-
 def continuous_gate_crossings(file):
   ##raw data
   ##finding gate crossings without butterworth
@@ -346,141 +240,6 @@ def continuous_gate_crossings(file):
   zero_crossings_right = check_shape_zero_crossings(zero_crossings_right, df_raw[RIGHT_AVY_HEADER].values)
   zero_crossings_left = check_shape_zero_crossings(zero_crossings_left, df_raw[LEFT_AVY_HEADER].values)
   return zero_crossings_left,zero_crossings_right , df_raw
-
-def raw_summary_graph_multi_gate(subjectID, sensor, gate_ind, zero_crossings, df_raw, summary_dir):
-  ##graphing first gate crossing
-  start_gate, end_gate = zero_crossings[gate_ind][0], zero_crossings[gate_ind+5][1]
-  print('indices', start_gate, end_gate)
-  points_raw = df_raw[sensor].values[start_gate:end_gate]
-  t = np.array([x for x in range(len(points_raw))])/FREQUENCY
-  fig, ax1 = plt.subplots(1, 1, figsize=(12,8))
-  ax1.plot(t, points_raw, color='black')
-  ax1.set_title('Raw signal')
-  ax1.set_xlabel("time (s)")
-  ax1.set_ylabel("rad/s")
-  _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
-  ax1.grid(visible=True)
-  sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_0rawmultigate_{sensor}.png'))
-
-def raw_summary_graph(subjectID, sensor, zero_crossings, df_raw, summary_dir):
-  ##graphing first gate crossing
-  start_gate, end_gate = zero_crossings[0]
-  print('indices', start_gate, end_gate)
-  points_raw = df_raw[sensor].values[start_gate:end_gate]
-  t = np.array([x for x in range(len(points_raw))])/FREQUENCY
-  fig, ax1 = plt.subplots(1, 1, figsize=(12,8))
-  ax1.plot(t, points_raw, color='black')
-  ax1.set_title('Raw signal')
-  ax1.set_xlabel("time (s)")
-  ax1.set_ylabel("rad/s")
-  _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
-  ax1.grid(visible=True)
-  sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_0raw_{sensor}.png'))
-
-
-def graph_summary_butterworth(subjectID,file, sensor, gate_ind, df_filtered, side, summary_dir, zero_crossing_lookup, N=4, Wn=20):
-  zero_crossings = zero_crossing_lookup[file][side]
-  start_gate, end_gate = zero_crossings[gate_ind]
-  print('indices', start_gate, end_gate)
-  points_filtered = df_filtered[sensor].values[start_gate:end_gate]
-  t = np.array([x for x in range(len(points_filtered))])/FREQUENCY
-
-  fig, ax2 = plt.subplots(1, 1, figsize=(12,8))
-  ax2.plot(t, points_filtered, color='black')
-  ax2.set_xlabel("time (s)")
-  ax2.set_ylabel("rad/s")
-  ax2.set_title(" Butterworth Filter " +" N = "+str(N)+", Wn = "+str(Wn)+"Hz")
-  _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
-  ax2.grid(visible=True)
-  sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_1butterworth_{sensor}.png'))
-
-def graph_gate_crossing_summary(subjectID, sensor, df_filtered, gate_ind, zero_crossings, summary_dir):
-  start_gate, end_gate = zero_crossings[gate_ind][0], zero_crossings[gate_ind+5][1]
-  filtered_values = df_filtered[sensor].values
-  print('indices', start_gate, end_gate)
-  points_gates=filtered_values[start_gate:end_gate]
-  t = np.array([x for x in range(len(points_gates))])/FREQUENCY
-
-  ct_gate_crossing_marks = 5
-  y_index_points = [zero_crossings[gate_ind+i][1] for i in range(ct_gate_crossing_marks)]
-  x_index_points = [zero_crossings[gate_ind+i][1]-zero_crossings[gate_ind][0] for i in range(ct_gate_crossing_marks)]
-  x_index_points[-1] = x_index_points[-1] -1
-  x_points = [t[i] for i in x_index_points]
-  y_points = [filtered_values[i] for i in y_index_points]
-
-  fig, ax3 = plt.subplots(1, 1, figsize=(12,8))
-  ax3.plot(t, points_gates, color='black')
-  ax3.scatter(x_points, y_points, color='r', s=200)
-  ax3.set_xlabel("time (s)")
-  ax3.set_ylabel("rad/s")
-  ax3.set_title(" Gate Detection ")
-  _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
-  ax3.grid(visible=True)
-  sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_2gate_detection_{sensor}.png'))
-
-def graph_summary_avg(subjectID, sensor, indoors, data_lookup, metadata, zero_crossing_lookup, summary_dir):
-  all_gates = aggregate_single_subject(data_lookup, metadata, zero_crossing_lookup, sensor, indoors , subjectID)
-  avg = all_gates.mean(axis=0)
-  std = all_gates.std(axis=0)
-  fig, ax = plt.subplots(figsize=(12,8))
-  ax.plot(avg, color='black')
-  label_axis(sensor, ax)
-  ax.grid(visible=True)
-  ax.fill_between(np.arange(0,100), avg-std, avg+std, alpha=0.4, color='gray')
-  ax.set_title(" Averaged Signal ")
-  _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
-  sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_3averaged_signal_{sensor}.png'))
-  return avg, std
-
-def graph_summary_avg_marked(subjectID, sensor, avg, std, summary_dir):
-  fig, ax = plt.subplots(figsize=(12,8))
-  ax.plot(avg, color='black')
-  tup1, tup2 = max_peak(avg, edge_start=3), find_lowest_valley(avg)
-  ax.scatter([tup1[0], tup2[0]],[tup1[1], tup2[1]], color='r', s=200)
-  label_axis(sensor, ax)
-  ax.grid(visible=True)
-  ax.fill_between(np.arange(0,100), avg-std, avg+std, alpha=0.4, color='gray')
-  ax.set_title(" Averaged Signal ")
-  _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
-  sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_4labeled_peak_valley_{sensor}.png'))
-
-
-def make_summary_plots(metadata,zero_crossing_lookup,data_lookup, subjectID =None, sensor=None):
-  if not subjectID:
-    subjectID = metadata['subjectID'].values[random.randint(0,metadata.shape[0]-1)]
-  #'20221030-100150-subject_21inw1.csv'
-  file =metadata['filename'][(metadata['subjectID']==subjectID) & (metadata['inout']=='indoors') & (metadata['trial']==1)].iloc[0]
-  subjectID, indoors, speed , _, _  = extract_trial_data(file)#
-  print("file", file)
-  print("subject", subjectID)
-  print("inout", indoors, "speed", speed)
-  if not sensor:
-    sensor = LEFT_AVY_HEADER
-
-  print("sensor", sensor)
-  zero_crossings_left,zero_crossings_right, df_raw = continuous_gate_crossings(file)
-  side = COLUMNS_TO_LEG[sensor]
-  if side=='right':
-    zero_crossings=zero_crossings_right
-  elif side=='left':
-    zero_crossings=zero_crossings_left
-  gate_ind = np.random.randint(1,(len(zero_crossing_lookup[file][side])-1)) # random.randint(0,len(zero_crossings)-2)
-
-  ##filtered data
-  ##zero crossings loaded from pickle
-  ##graphing first gate crossing
-  raw_summary_graph_multi_gate(subjectID, sensor,gate_ind, zero_crossings, df_raw)
-  #raw_summary_graph(subjectID, sensor, zero_crossings, df_raw)
-  #graph_summary_butterworth(subjectID,file, sensor, gate_ind, data_lookup[file], side)
-  graph_gate_crossing_summary(subjectID, sensor, data_lookup[file], gate_ind,zero_crossing_lookup[file][side] )
-  avg, std = graph_summary_avg(subjectID, sensor, indoors)
-  graph_summary_avg_marked(subjectID, sensor, avg, std)
 
 
 

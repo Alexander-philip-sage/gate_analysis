@@ -1,3 +1,4 @@
+#
 import os, datetime, pickle
 import numpy as np
 import matplotlib.pyplot as plt
@@ -164,7 +165,7 @@ def run_cadence_filtered_everything():
 
 def run_everything():
   ##load all data and filter it
-  base_dir = os.path.join('Analysis',"05_13_23")
+  base_dir = os.path.join("2023.09.29")
   if not os.path.exists(base_dir):
     os.mkdir(base_dir)
   for PACE in [ 'fast', 'normal','slow']:

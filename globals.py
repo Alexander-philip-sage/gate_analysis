@@ -56,7 +56,7 @@ import pyhrv.nonlinear as nl
 import biosppy
 from biosppy.signals.ecg import ecg
 import matplotlib as mpl'''
-DATA_DIR = 'raw_data_2023.01.31'#'Text_File/Master_Data--TD_1-30_CSVFiles/Subjects_1-30-inw1_through_osw1'
+DATA_DIR = 'raw_data'#'Text_File/Master_Data--TD_1-30_CSVFiles/Subjects_1-30-inw1_through_osw1'
 GATE_CROSSING = -0.3
 FREQUENCY = 128
 
