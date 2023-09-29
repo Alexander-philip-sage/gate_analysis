@@ -6,11 +6,13 @@ from typing import List, Tuple
 from scipy.spatial import distance
 from load_data import select_random_df
 import matplotlib.pyplot as plt
-from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER
+from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER, FREQUENCY
 from globals import COLUMNS_TO_GRAPH, COLUMNS_TO_AREA, COLUMNS_TO_LEG, COLUMNS_BY_SENSOR
 import random
 from scipy.stats import shapiro, ttest_rel, wilcoxon
 import glob
+import statsmodels.api as sm
+import time
 from gate_crossings import find_swing_stance_index, avg_std_gate_lengths, max_peak, find_lowest_valley
 ################NORMALIZING AND CHECKING GATES########
 def grab_normalized_gate(df: pd.core.frame.DataFrame, zero_crossings: List[Tuple[int]], gate_ind:int , header:str):
@@ -35,7 +37,7 @@ def calc_avg_std_gates(df: pd.core.frame.DataFrame, zero_crossings: List[int] , 
   std = all_gates.std(axis=0)
   return avg, std , all_gates
 
-def graph_normalizing_effect(zero_crossing_lookup,data_lookup):
+def graph_normalizing_effect(zero_crossing_lookup,data_lookup, metadata):
   ##graph a gate at random
   ##graph the raw signal and the signal normalized to 100 points via upsampling or downsampling
 
@@ -71,7 +73,7 @@ def grab_peak_valley(signal):
   pv_v = [peak_value, valley_value]
   return pv_i, pv_v
 
-def plot_avy_peak_singlefile(subjectID: int, metadata, data_lookup, zero_crossing_lookup):
+def plot_avy_peak_singlefile(subjectID: int, metadata, data_lookup, zero_crossing_lookup, file):
   '''plot the avg across all gates for the primary data streams
   on the left and right foot'''
   df , filename= select_random_df(metadata,data_lookup )
@@ -96,7 +98,7 @@ def plot_avy_peak_singlefile(subjectID: int, metadata, data_lookup, zero_crossin
   _ = fig.suptitle("average gate plots for file "+file)
 
 ##exploring other data streams with the gates defined above
-def graph_random_thighs(metadata,data_lookup):
+def graph_random_thighs(metadata,data_lookup, zero_crossing_lookup):
   df , filename= select_random_df(metadata,data_lookup )
   zero_crossings_left=zero_crossing_lookup[filename]['left']
   zero_crossings_right= zero_crossing_lookup[filename]['right']

@@ -1,6 +1,12 @@
 import os, datetime, pickle
 import numpy as np
-
+import pandas as pd
+from aggregating_gates import  aggregate_subjects_trials, aggregate_single_subject, combine_legs_flip
+from globals import COLUMNS_TO_AREA, COLUMNS_TO_GRAPH, COLUMNS_BY_SENSOR
+from gate_crossings import correlate, max_peak
+from scipy.spatial import distance
+from scipy.stats import shapiro, ttest_rel, wilcoxon
+from collections import defaultdict
 def z_score_directly(indoor_avg, indoor_std, outdoor_avg, outdoor_std):
   z_score  = (outdoor_avg-indoor_avg)/indoor_std
   cohens_d = (outdoor_avg-indoor_avg)/np.sqrt((indoor_std**2+outdoor_std**2)/2)
@@ -81,7 +87,7 @@ def normalize_signal_by_range(indoor, outdoor):
   outrange = outdoor.max()-outdoor.min()
   return indoor/inrange, outdoor/outrange
 
-def measure_correlation(signal_indoors, signal_outdoors, verbose=False):
+def measure_correlation(signal_indoors, signal_outdoors,column_to_graph,  verbose=False):
   corr = correlate(signal_indoors, signal_outdoors)
   peak_corr = max_peak(corr)
   auto_corr = correlate(signal_indoors, signal_indoors)
@@ -133,7 +139,7 @@ def signal_sim_comb_legs(combined_legs,SAVE_DIR):
   sim_df.to_csv(os.path.join(save_dir, "signal_similarity_combined_legs.csv"))
 
 
-  def signal_similarity_per_subject_indoor_outdoor(metadata,data_lookup, zero_crossing_lookup, save_dir):
+def signal_similarity_per_subject_indoor_outdoor(metadata,data_lookup, zero_crossing_lookup, save_dir):
   columns=['sensor','subjectID','area', 'cosine_similarity', 'euclidean_distance', 'correlation_peak_divided_by_auto-correlation_amplitude']
   data = []
   if not os.path.exists(save_dir):
@@ -190,7 +196,7 @@ def signal_similarity_per_subject_combined_invsout(metadata,data_lookup, zero_cr
   df_lrc = pd.DataFrame(data, columns=columns)
   df_lrc.to_csv(os.path.join(save_dir,'lr_combined_indoor_vs_outdoor.csv'))
 
-  def signal_similarity_per_subject_left_right(metadata,data_lookup, zero_crossing_lookup, save_dir):
+def signal_similarity_per_subject_left_right(metadata,data_lookup, zero_crossing_lookup, save_dir):
   '''compare the similarity of the mean signals from the left leg to the
   right leg for each sensor and for indoor and outdoor '''
   columns=['sensor','subjectID','area','inout', 'cosine_similarity', 'euclidean_distance', 'correlation_peak_divided_by_auto-correlation_amplitude']

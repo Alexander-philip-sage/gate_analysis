@@ -9,6 +9,7 @@ import os, datetime, pickle
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+from aggregating_gates import aggregate_single_subject
 from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER
 from globals import COLUMNS_TO_GRAPH, COLUMNS_TO_AREA, COLUMNS_TO_LEG, COLUMNS_BY_SENSOR
 from similarity import combine_legs_single_subject
@@ -215,7 +216,7 @@ def graph_poincare_comb_leg_per_sensor(combined_legs, sensor, save_dir_m, ylim=N
     time.sleep(0.1)
   df_poincare = pd.DataFrame(data_poincare, columns=columns)
   df_poincare.to_csv(os.path.join(save_dir,'poincare_sd.csv'), index=False)
-def graph_poincare_comb_leg(combined_legs, save_dir_m):
+def graph_poincare_comb_leg(combined_legs, save_dir_m, metadata):
   print("pace",metadata['pace'].unique()[0])
   for sensor in list(combined_legs.keys()):
     graph_poincare_comb_leg_per_sensor(combined_legs, sensor, save_dir_m)
@@ -330,10 +331,10 @@ def calc_t_test_poincare(indoors, outdoors):
   ttest = ttest_rel
   t_statistic, p_value = ttest(indoors, outdoors,alternative=alternative )
   return t_statistic, p_value
-def calculate_poincare_stats(alpha = 0.05):
+def calculate_poincare_stats(base_dir, alpha = 0.05):
   '''calc poincare using the values from each signal as the data for the lists
   to compare indoor and outdoor'''
-  save_dir = os.path.join(SAVE_DIR, 'poincare')
+  save_dir = os.path.join(base_dir, 'poincare')
   all_poincare_data= load_poincare_data(save_dir)
   poin_stats_data = []
   for col in ['sd1', 'sd2']:

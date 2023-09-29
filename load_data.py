@@ -1,11 +1,12 @@
 import os, datetime, pickle
 import numpy as np
 import pandas as pd
-from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER
+from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER, FREQUENCY, DATA_DIR
 from globals import COLUMNS_TO_GRAPH, COLUMNS_TO_AREA, COLUMNS_TO_LEG, COLUMNS_BY_SENSOR
 import glob
 from scipy.signal import correlate, find_peaks, butter, sosfilt
 import random
+import matplotlib.pyplot as plt
 def extract_trial_data(filename, verbose=False):
   end_part = filename.split('_')[1].replace('.csv','')
   subjectID_str = ''.join([x for x in end_part[:3] if x.isdigit()])
@@ -101,7 +102,7 @@ def select_random_df(metadata,data_lookup ):
   filename = filenames[np.random.randint(low=0, high=(len(filenames)-1))]
   return data_lookup[filename]  , filename
 
-def generate_examples_of_butter_filter(zero_crossing_lookup, metadata,  N:int = 4, Wn:float = 20, column:str = LEFT_AVY_HEADER):
+def generate_examples_of_butter_filter(zero_crossing_lookup, metadata,save_dir,  N:int = 4, Wn:float = 20, column:str = LEFT_AVY_HEADER):
   '''  grab a random file and a random gate'''
   for i in range(20):
     random_int = random.randint(0,metadata.shape[0]-1)
@@ -125,7 +126,7 @@ def generate_examples_of_butter_filter(zero_crossing_lookup, metadata,  N:int = 
     ax2.grid(visible=True)
     print()
     _=fig.suptitle("Subject " +str(subjectID)+" " + column+ " " + COLUMNS_TO_AREA[column])
-    filter_dir = os.path.join(SAVE_DIR, "butterworth_examples")
+    filter_dir = os.path.join(save_dir, "butterworth_examples")
     if not os.path.exists(filter_dir):
       os.mkdir(filter_dir)
     image_name = file.replace(".csv", '')+ " center " +str(center)+'.png'

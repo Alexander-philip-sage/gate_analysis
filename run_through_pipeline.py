@@ -1,5 +1,17 @@
 import os, datetime, pickle
 import numpy as np
+import matplotlib.pyplot as plt
+from gate_crossings import calc_all_gate_crossings, stats_gate_lengths_by_file
+from aggregating_gates import each_sensor_each_subject, save_each_subject_each_sensor, aggregate_subjects_trials_legs, graph_aggregate_subjects_trials_legs
+from aggregating_gates import gate_peak_valley_swing, calc_shapiro_t_test, calc_shapiro_t_test_legs_combined, graph_sensors_combined_subjects_trials
+from aggregating_gates import combined_subjects_trials_signal_stats, cadence_per_subject
+from poincare import graph_poincare_comb_leg_per_sensor, graph_poincare_per_leg, graph_poincare_comb_leg_per_subject, poincare_sim_stats_per_sensor
+from globals import LEFT_AVY_HEADER, GATE_CROSSING, DATA_DIR
+from aggregate_speeds import re_formatting_peak, re_format_paired_comparison, re_format_distance_sim, re_format_poincare_sim_stats
+from load_data import load_data,  load_metadata
+from similarity import signal_similarity, signal_similarity_per_subject_indoor_outdoor, signal_similarity_per_subject_combined_invsout
+from similarity import signal_similarity_per_subject_left_right, signal_sim_comb_legs, lr_control_ivo
+import pandas as pd
 
 def run_everything1(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR):
   print("run_everything1", SAVE_DIR)
@@ -93,10 +105,7 @@ def run_everything3(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR, combi
   plt.close()
   print("signal_sim_comb_legs took", (datetime.datetime.now()-start).total_seconds(), "to run")
 
-
-
-
-  def run_cadence_filtered_everything():
+def run_cadence_filtered_everything():
   ##load all data and filter it
   with open(os.path.join("Analysis", 'cadence','outliers.pickle'),'rb') as fileobj:
     outliers = pickle.load(fileobj)
