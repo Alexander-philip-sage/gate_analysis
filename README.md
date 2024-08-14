@@ -9,3 +9,9 @@ Checkpoints are important because the data loaded and created is way too large f
 ## Running the code
 
 gate_analysis.py is the main entry point for the code. Check the functions called run_everything. There are several variations of this function that all do mostly the same thing. There is no one that is correct, it depends on what you need. 
+
+## Env setup
+
+A conda env would likely get you almost everything you need. There aren't many unique packages used except statsmodels
+
+`pip install statsmodels`
