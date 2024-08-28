@@ -1,14 +1,26 @@
+##https://sciendo.com/article/10.2478/slgr-2013-0031
+#!pip install pyhrv
 import pyhrv
 import pyhrv.nonlinear as nl
 import biosppy
-#from biosppy.signals.ecg import ecg
-import numpy as np
+from biosppy.signals.ecg import ecg
 import matplotlib as mpl
+import os,   sys
+import numpy as np
+import time
 import matplotlib.pyplot as plt
-
+from aggregating_gates import aggregate_single_subject
+from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER
+from globals import COLUMNS_TO_GRAPH, COLUMNS_TO_AREA, COLUMNS_TO_LEG, COLUMNS_BY_SENSOR
+from similarity import combine_legs_single_subject
+import pandas as pd
+import glob
+import scipy
+from scipy.stats import shapiro, ttest_rel, wilcoxon
+print (sys.version)
 print("pyhrv package version",pyhrv.__version__)
 print("biosppy package version",biosppy.__version__)
-
+print("scipy package version",scipy.__version__)
 def poincare(nni=None,
 			 rpeaks=None,
 			 show=True,
@@ -154,3 +166,186 @@ def poincare(nni=None,
 		args = (fig, sd1, sd2, sd2/sd1, area)
 		names = ('poincare_plot', 'sd1', 'sd2', 'sd_ratio', 'ellipse_area')
 		return biosppy.utils.ReturnTuple(args, names)
+	
+def graph_poincare_per_leg(data_lookup, metadata, zero_crossing_lookup, sensor, save_dir):
+  ''' for single sensor, for indoors and out, for each subject do poincare on the
+  avg signal '''
+  area=COLUMNS_TO_AREA[sensor]
+  save_dir = os.path.join(save_dir,sensor.replace('/', "-").replace('/', "-").replace(os.path.sep, "-").replace(" ", '')+'_'+area.replace(' ',"_"))
+  if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
+  data_poincare=[]
+  print("pace",metadata['pace'].unique())
+  for inout in ['indoors', 'outdoors']:
+    for subjectID in  metadata['subjectID'].unique():
+      all_gates = aggregate_single_subject(data_lookup, metadata, zero_crossing_lookup, sensor, inout , subjectID)
+      avg =all_gates.mean(axis=0)
+      title = "{} {} {} subjectID: {}".format(sensor,area, inout,subjectID)
+      figname = "{}_{}_{}_{}.png".format(sensor.replace('/', "-").replace(os.path.sep, "-"),area, inout,subjectID)
+      results = poincare(avg, title=title, show=False)
+      fig = results['poincare_plot']
+      columns = ['sensor','area','inout', 'subjectID', 'sd1', 'sd2', 'sd_ratio', 'ellipse_area']
+      data_poincare.append([sensor,area, inout,subjectID,
+                            results['sd1'], results['sd2'], results['sd_ratio'],
+                            results['ellipse_area']])
+      fig.savefig(os.path.join(save_dir, figname))
+      plt.close()
+      time.sleep(0.1)
+  df_poincare = pd.DataFrame(data_poincare, columns=columns)
+  df_poincare.to_csv(os.path.join(save_dir,'poincare_sd.csv'), index=False)
+
+
+def graph_poincare_comb_leg_per_sensor(combined_legs, sensor, save_dir_m, ylim=None, xlim=None):
+  ''' for single sensor - combined across legs, for indoors and out, aggregate
+  across all subjects do poincare on the avg signal '''
+  save_dir = os.path.join(save_dir_m,sensor.replace('/', "-").replace(os.path.sep, "-").replace(" ", '').replace("^",'-'))
+  #print("saving at",save_dir)
+  if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
+  data_poincare=[]
+  for inout in ['indoors', 'outdoors']:
+    avg_signal = combined_legs[sensor][inout]['avg']
+    title = "{} {}".format(sensor, inout)
+    figname = "{}_{}.png".format(sensor.replace('/', "-").replace(os.path.sep, "-"), inout)
+    results = poincare(avg_signal, title=title, show=False, ylim=ylim, xlim=xlim)
+    fig = results['poincare_plot']
+    columns = ['sensor','inout', 'sd1', 'sd2', 'sd_ratio', 'ellipse_area']
+    data_poincare.append([sensor, inout,
+                          results['sd1'], results['sd2'], results['sd_ratio'],
+                          results['ellipse_area']])
+    fig.savefig(os.path.join(save_dir, figname))
+    plt.close()
+    time.sleep(0.1)
+  df_poincare = pd.DataFrame(data_poincare, columns=columns)
+  df_poincare.to_csv(os.path.join(save_dir,'poincare_sd.csv'), index=False)
+def graph_poincare_comb_leg(combined_legs, save_dir_m, metadata):
+  print("pace",metadata['pace'].unique()[0])
+  for sensor in list(combined_legs.keys()):
+    graph_poincare_comb_leg_per_sensor(combined_legs, sensor, save_dir_m)
+
+def graph_poincare_comb_leg_per_sensor_per_subject(metadata,data_lookup,zero_crossing_lookup, sensor_cols, save_dir_m ,ylim=None, xlim=None):
+  ''' for single sensor - combined legs, for indoors and out, for each subject do poincare on the
+  avg signal '''
+  sensor_name = sensor_cols['left'].replace(".1",' '+sensor_cols['sensor']).replace(".3",' '+sensor_cols['sensor'])
+  save_dir = os.path.join(save_dir_m,sensor_name.replace(os.path.sep,'-'))
+  if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
+  rows = []
+  for subjectID in  metadata['subjectID'].unique():
+      indoors, outdoors = combine_legs_single_subject(sensor_name,data_lookup, metadata, zero_crossing_lookup, sensor_cols, subjectID )
+      for signal, inout in [(indoors,'indoors'), (outdoors, 'outdoors')]:
+        title = "{} {} subject:{}".format(sensor_name, inout, subjectID)
+        figname = "{}_{}_subject{}.png".format(sensor_name.replace(os.path.sep,'-'), inout, subjectID)
+
+        results = poincare(signal, title=title, show=False, ylim=ylim, xlim=xlim)
+        fig = results['poincare_plot']
+        rows.append({"sensor":sensor_name, "subjectID":subjectID, "inout":inout,
+                     'sd1':results['sd1'] ,"sd2":results['sd2'],
+                     "sd_ration":results['sd_ratio'],
+                     "ellipse_area":results['ellipse_area'],
+                          })
+        fig.savefig(os.path.join(save_dir, figname))
+        plt.close()
+        time.sleep(0.1)
+  return rows
+def graph_poincare_comb_leg_per_subject(metadata,data_lookup,zero_crossing_lookup, save_dir):
+  '''loops through all the sensors to call graph_poincare_comb_leg_per_sensor_per_subject'''
+  print('pace',metadata['pace'].unique())
+  if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
+  df_poincare_p_subject= pd.DataFrame()
+  for sensor_cols in COLUMNS_BY_SENSOR:
+    #print(sensor_name)
+    rows =graph_poincare_comb_leg_per_sensor_per_subject(metadata,data_lookup,zero_crossing_lookup, sensor_cols, save_dir)
+    df_poincare_p_subject = pd.concat([df_poincare_p_subject, pd.DataFrame(rows)])
+  df_save_path = os.path.join(save_dir, "poincare_p_subject.csv")
+  df_poincare_p_subject.to_csv(df_save_path, index=False)
+  print(df_save_path)
+  return df_poincare_p_subject
+
+def get_sub_poincare(df_poincare_p_subject, sensor, inout, col):
+  sub = df_poincare_p_subject[(df_poincare_p_subject['sensor']==sensor )& (df_poincare_p_subject['inout']==inout) ]
+  return sub[col].values
+def poincare_sim_stats_per_sensor(SAVE_DIR, alpha = 0.05):
+  '''using sd1 and sd2 to calculate sim stats for each sensor
+  must be run after graph_poincare_comb_leg_per_subject to load the data for each
+  subject indoor and outdoor so that can be fed into the similarity calc'''
+  lookup_dir = os.path.join(SAVE_DIR, 'poincare',"per_subject")
+  lookup_df_path = os.path.join(lookup_dir,"poincare_p_subject.csv")
+  print(lookup_df_path)
+  df_poincare_p_subject = pd.read_csv(lookup_df_path)
+  poin_stats_data = []
+  for sensor in list(df_poincare_p_subject['sensor'].unique()):
+    for col in ['sd1', 'sd2']:
+      indoors = get_sub_poincare(df_poincare_p_subject, sensor, 'indoors', col)
+      outdoors = get_sub_poincare(df_poincare_p_subject, sensor, 'outdoors', col)
+      in_row, out_row = indoor_outdoor_similarity(indoors, outdoors, col, alpha)
+      in_row['sensor'] = sensor
+      out_row['sensor'] = sensor
+      poin_stats_data.extend([in_row, out_row])
+  poin_stats = pd.DataFrame(poin_stats_data)
+  poin_stats.to_csv(os.path.join(lookup_dir, 'poincare_sim_stats_per_sensor.csv'), index=False)
+
+def poincare_z_score_cohens_d(indoors, outdoors):
+  indoors_std = indoors.std()
+  outdoors_mean=outdoors.mean()
+  indoors_mean= indoors.mean()
+  #print("indoor mean", indoors_mean, "std", indoors_std)
+  z_score =  (outdoors_mean-indoors_mean)/indoors_std
+  cohens_d = (outdoors_mean-indoors_mean)/np.sqrt((indoors_std**2+outdoors.std()**2)/2)
+  return z_score, cohens_d
+def load_poincare_data(save_dir):
+  list_dirs = [x for x in os.listdir(save_dir) if 'left' not in x]
+  list_dirs = [x for x in list_dirs if 'right' not in x]
+  list_dirs = [x for x in list_dirs if os.path.isdir(os.path.join(save_dir,x))]
+  print("dirs looking in", save_dir)
+  print(list_dirs)
+  all_poincare_stats = pd.DataFrame()
+  for dr in list_dirs:
+    csv = glob.glob(os.path.join(save_dir, dr, "*.csv"))
+    all_poincare_stats = pd.concat([all_poincare_stats, pd.read_csv(csv[0])])
+  return all_poincare_stats
+
+def indoor_outdoor_similarity(indoors, outdoors, col, alpha):
+  z_score, cohens_d=poincare_z_score_cohens_d(indoors, outdoors)
+  shapiro_statistic_indoors, p_indoors = shapiro(indoors)
+  shapiro_statistic_outdoors, p_outdoors = shapiro(outdoors)
+  if (p_indoors >alpha) and (p_outdoors> alpha):
+    test_stat, p_value=calc_t_test_poincare(indoors, outdoors)
+    test_type='t_test'
+  else:
+    test_stat, p_value=calc_wilcoxon_poincare(indoors, outdoors)
+    test_type='wilcoxon'
+  indoor_row = {'source':col,'inout':'indoors', 'avg':indoors.mean(), 'std':indoors.std(), 'shapiro_stat':shapiro_statistic_indoors,
+                'shapiro_p_val':p_indoors}
+  outdoor_row = {'source':col,'inout':'outdoors', 'avg':outdoors.mean(), 'std':outdoors.std(), 'shapiro_stat':shapiro_statistic_outdoors,
+                'shapiro_p_val':p_outdoors, 'test_type':test_type, 'stat':test_stat, 'p_value':p_value,
+                'z_score':z_score, "cohens_d":cohens_d}
+  return [indoor_row, outdoor_row]
+
+def calc_wilcoxon_poincare(indoors, outdoors):
+  alternative = 'two-sided'
+  zero_method = 'wilcox'
+  w_statistic, p_value = wilcoxon(indoors, outdoors,alternative=alternative,  zero_method= zero_method)
+  return w_statistic, p_value
+def calc_t_test_poincare(indoors, outdoors):
+  alternative = 'two-sided'
+  ttest = ttest_rel
+  t_statistic, p_value = ttest(indoors, outdoors,alternative=alternative )
+  return t_statistic, p_value
+def calculate_poincare_stats(base_dir, alpha = 0.05):
+  '''calc poincare using the values from each signal as the data for the lists
+  to compare indoor and outdoor'''
+  save_dir = os.path.join(base_dir, 'poincare')
+  all_poincare_data= load_poincare_data(save_dir)
+  poin_stats_data = []
+  for col in ['sd1', 'sd2']:
+    indoors = all_poincare_data[all_poincare_data['inout']=='indoors'][col].values
+    outdoors = all_poincare_data[all_poincare_data['inout']=='outdoors'][col].values
+    poin_stats_data.extend(indoor_outdoor_similarity(indoors, outdoors, col, alpha))
+  poin_stats = pd.DataFrame(poin_stats_data)
+  poin_stats.to_csv(os.path.join(save_dir, 'poincare_sim_stats.csv'), index=False)
+  #print("indoor mean", indoors.mean(), "std", indoors.std())
+  return poin_stats
+
+

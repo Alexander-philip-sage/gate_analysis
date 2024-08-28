@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # gate_analysis
 
 ## Current State
@@ -12,6 +13,16 @@ gate_analysis.py is the main entry point for the code. Check the functions calle
 
 ## Env setup
 
-A conda env would likely get you almost everything you need. There aren't many unique packages used except statsmodels
+### Conda env
+A conda env would likely get you almost everything you need. There aren't many unique packages used except statsmodels. 
 
 `pip install statsmodels`
+
+### Venv
+
+You could follow these incomplete steps for setting up a venv.
+
+1. create your venv `python -m venv c:\path\to\myenv`
+2. activate it with windows cmd `C:\> <venv>\Scripts\activate.bat`
+3. `pip install scipy`
+4. `pip install statsmodels`

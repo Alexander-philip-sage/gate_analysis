@@ -1,24 +1,12 @@
-from extract_gates import  find_lowest_valley,  max_peak, extract_gate_crossings, pair_gate_ends, check_shape_zero_crossings
-from global_variables import RIGHT_AVY_HEADER,LEFT_AVY_HEADER,  FREQUENCY, GATE_CROSSING, DATA_DIR, COLUMNS_BY_SENSOR, COLUMNS_TO_LEG, COLUMNS_TO_AREA, COLUMNS_TO_GRAPH
-from load_data import load_data
 
+from globals import COLUMNS_TO_AREA, FREQUENCY
+import numpy as np
+import random
+from load_data import extract_trial_data
+from gate_crossings import label_axis, continuous_gate_crossings
+from peaks_valley_swing import find_lowest_valley, max_peak
 
-
-def continuous_gate_crossings(file):
-  ##raw data
-  ##finding gate crossings without butterworth
-  df_raw = load_data(file, low_pass = False)
-  zero_crossings_right = extract_gate_crossings(df_raw,RIGHT_AVY_HEADER, gate_crossing= GATE_CROSSING)
-  zero_crossings_left = extract_gate_crossings(df_raw,LEFT_AVY_HEADER, gate_crossing= GATE_CROSSING)
-  ##conver zero crossings to tuples
-  zero_crossings_right = pair_gate_ends(zero_crossings_right, sensor = RIGHT_AVY_HEADER,filename = file, gate_length_bounds=None)
-  zero_crossings_left = pair_gate_ends(zero_crossings_left, sensor =LEFT_AVY_HEADER, filename = file, gate_length_bounds=None)
-  ##check that the gates have the right shape
-  zero_crossings_right = check_shape_zero_crossings(zero_crossings_right, df_raw[RIGHT_AVY_HEADER].values)
-  zero_crossings_left = check_shape_zero_crossings(zero_crossings_left, df_raw[LEFT_AVY_HEADER].values)
-  return zero_crossings_left,zero_crossings_right , df_raw
-
-def raw_summary_graph_multi_gate(SUMMARY_DIR, subjectID, sensor, gate_ind, zero_crossings, df_raw):
+def raw_summary_graph_multi_gate(subjectID, sensor, gate_ind, zero_crossings, df_raw, summary_dir):
   ##graphing first gate crossing
   start_gate, end_gate = zero_crossings[gate_ind][0], zero_crossings[gate_ind+5][1]
   print('indices', start_gate, end_gate)
@@ -32,9 +20,9 @@ def raw_summary_graph_multi_gate(SUMMARY_DIR, subjectID, sensor, gate_ind, zero_
   _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
   ax1.grid(visible=True)
   sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(SUMMARY_DIR, f'subject_{subjectID}_0rawmultigate_{sensor}.png')) 
+  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_0rawmultigate_{sensor}.png'))
 
-def raw_summary_graph(SUMMARY_DIR, subjectID, sensor, zero_crossings, df_raw):
+def raw_summary_graph(subjectID, sensor, zero_crossings, df_raw, summary_dir):
   ##graphing first gate crossing
   start_gate, end_gate = zero_crossings[0]
   print('indices', start_gate, end_gate)
@@ -48,9 +36,10 @@ def raw_summary_graph(SUMMARY_DIR, subjectID, sensor, zero_crossings, df_raw):
   _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
   ax1.grid(visible=True)
   sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(SUMMARY_DIR, f'subject_{subjectID}_0raw_{sensor}.png'))  
+  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_0raw_{sensor}.png'))
 
-def graph_summary_butterworth(SUMMARY_DIR, zero_crossing_lookup, subjectID,file, sensor, gate_ind, df_filtered, side, N=4, Wn=20):
+
+def graph_summary_butterworth(subjectID,file, sensor, gate_ind, df_filtered, side, summary_dir, zero_crossing_lookup, N=4, Wn=20):
   zero_crossings = zero_crossing_lookup[file][side]
   start_gate, end_gate = zero_crossings[gate_ind]
   print('indices', start_gate, end_gate)
@@ -65,9 +54,9 @@ def graph_summary_butterworth(SUMMARY_DIR, zero_crossing_lookup, subjectID,file,
   _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
   ax2.grid(visible=True)
   sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(SUMMARY_DIR, f'subject_{subjectID}_1butterworth_{sensor}.png'))
+  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_1butterworth_{sensor}.png'))
 
-def graph_gate_crossing_summary(SUMMARY_DIR, subjectID, sensor, df_filtered, gate_ind, zero_crossings):
+def graph_gate_crossing_summary(subjectID, sensor, df_filtered, gate_ind, zero_crossings, summary_dir):
   start_gate, end_gate = zero_crossings[gate_ind][0], zero_crossings[gate_ind+5][1]
   filtered_values = df_filtered[sensor].values
   print('indices', start_gate, end_gate)
@@ -90,9 +79,9 @@ def graph_gate_crossing_summary(SUMMARY_DIR, subjectID, sensor, df_filtered, gat
   _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
   ax3.grid(visible=True)
   sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(SUMMARY_DIR, f'subject_{subjectID}_2gate_detection_{sensor}.png'))  
+  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_2gate_detection_{sensor}.png'))
 
-def graph_summary_avg(SUMMARY_DIR, data_lookup, metadata, zero_crossing_lookup, subjectID, sensor, indoors):
+def graph_summary_avg(subjectID, sensor, indoors, data_lookup, metadata, zero_crossing_lookup, summary_dir):
   all_gates = aggregate_single_subject(data_lookup, metadata, zero_crossing_lookup, sensor, indoors , subjectID)
   avg = all_gates.mean(axis=0)
   std = all_gates.std(axis=0)
@@ -104,10 +93,10 @@ def graph_summary_avg(SUMMARY_DIR, data_lookup, metadata, zero_crossing_lookup, 
   ax.set_title(" Averaged Signal ")
   _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
   sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(SUMMARY_DIR, f'subject_{subjectID}_3averaged_signal_{sensor}.png'))   
+  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_3averaged_signal_{sensor}.png'))
   return avg, std
 
-def graph_summary_avg_marked(SUMMARY_DIR,subjectID, sensor, avg, std):
+def graph_summary_avg_marked(subjectID, sensor, avg, std, summary_dir):
   fig, ax = plt.subplots(figsize=(12,8))
   ax.plot(avg, color='black')
   tup1, tup2 = max_peak(avg, edge_start=3), find_lowest_valley(avg)
@@ -118,9 +107,10 @@ def graph_summary_avg_marked(SUMMARY_DIR,subjectID, sensor, avg, std):
   ax.set_title(" Averaged Signal ")
   _=fig.suptitle("Subject " +str(subjectID)+" " + sensor+ " " + COLUMNS_TO_AREA[sensor])
   sensor = sensor.replace("/", "-")
-  fig.savefig(os.path.join(SUMMARY_DIR, f'subject_{subjectID}_4labeled_peak_valley_{sensor}.png'))   
+  fig.savefig(os.path.join(summary_dir, f'subject_{subjectID}_4labeled_peak_valley_{sensor}.png'))
 
-def make_summary_plots(metadata,zero_crossing_lookup, data_lookup,  subjectID =None, sensor=None):
+
+def make_summary_plots(metadata,zero_crossing_lookup,data_lookup, subjectID =None, sensor=None):
   if not subjectID:
     subjectID = metadata['subjectID'].values[random.randint(0,metadata.shape[0]-1)]
   #'20221030-100150-subject_21inw1.csv'
@@ -128,7 +118,7 @@ def make_summary_plots(metadata,zero_crossing_lookup, data_lookup,  subjectID =N
   subjectID, indoors, speed , _, _  = extract_trial_data(file)#
   print("file", file)
   print("subject", subjectID)
-  print("inout", indoors, "speed", speed) 
+  print("inout", indoors, "speed", speed)
   if not sensor:
     sensor = LEFT_AVY_HEADER
 
@@ -139,7 +129,7 @@ def make_summary_plots(metadata,zero_crossing_lookup, data_lookup,  subjectID =N
     zero_crossings=zero_crossings_right
   elif side=='left':
     zero_crossings=zero_crossings_left
-  gate_ind = np.random.randint(1,(len(zero_crossing_lookup[file][side])-1)) # random.randint(0,len(zero_crossings)-2)  
+  gate_ind = np.random.randint(1,(len(zero_crossing_lookup[file][side])-1)) # random.randint(0,len(zero_crossings)-2)
 
   ##filtered data
   ##zero crossings loaded from pickle

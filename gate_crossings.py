@@ -1,64 +1,18 @@
-import os
-import glob
-import datetime
+import os, datetime, pickle
+import numpy as np
+from typing import List, Tuple
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
-from scipy.signal import find_peaks
-from typing import List, Tuple
-from load_data import extract_trial_data
+from scipy.signal import correlate, find_peaks, butter, sosfilt
+from globals import RIGHT_AVY_HEADER, LEFT_AVY_HEADER, GATE_CROSSING, FREQUENCY
+from globals import COLUMNS_TO_GRAPH, COLUMNS_TO_AREA, COLUMNS_TO_LEG, COLUMNS_BY_SENSOR
+from load_data import extract_trial_data, load_data
 from collections import Counter
-from global_variables import RIGHT_AVY_HEADER,LEFT_AVY_HEADER,  FREQUENCY, GATE_CROSSING, DATA_DIR, COLUMNS_BY_SENSOR, COLUMNS_TO_LEG, COLUMNS_TO_AREA, COLUMNS_TO_GRAPH
-
-def find_swing_stance_index(signal, min_percent=35):
-  '''finds the peak right before the valley of the angular velocity y 
-  data stream.
-  input: signal from a single gate
-  returns: index and value'''
-  min_index = int(min_percent*len(signal)/100)
-  max_index, valley_value = find_lowest_valley(signal)
-  peak_indices = find_peaks(signal)[0]
-  possible_stance_change_index = []
-  edge_start = 3
-  edge_end = len(signal)-edge_start -1
-  for x in peak_indices:
-    if (edge_end > x > edge_start) and (max_index > x > min_index):
-      possible_stance_change_index.append(x)
-  peak_values = [signal[x] for x in possible_stance_change_index]
-  if len(peak_values)==0:
-    #plt.plot(signal)
-    #pname = "signal_np.pickle"
-    #with open(pname, 'wb') as fileobj:
-    #  pickle.dump(np.array(signal),fileobj )
-    raise ValueError("couldn't find peak.min index {} max index {} peak indices ".format(min_index,max_index)+str(peak_indices))
-
-  stance_change_index =  possible_stance_change_index[peak_values.index(max(peak_values))]
-  stance_change_value = signal[stance_change_index]
-  return stance_change_index, stance_change_value
-
-def find_lowest_valley(signal):
-  '''finds the min peak in a signal.
-  returns the x,y values from that signal where the min peak is'''
-  assert (type(signal)==list or type(signal)==np.ndarray)
-  inv_signal = -1*signal
-  peak_indices = find_peaks(inv_signal)[0]
-  edge_start = 1
-  edge_end = len(signal)-edge_start -1
-  peak_indices = [x for x in peak_indices if (edge_start < x < edge_end)]
-  peak_values = [signal[x] for x in peak_indices]
-  min_index =peak_values.index(min(peak_values))
-  return peak_indices[min_index],peak_values[min_index]
-
-def max_peak(signal, edge_start = 3):
-  '''finds the max peak in a signal.
-  returns the x,y values from that signal where the max peak is'''
-  peak_indices = find_peaks(signal)[0]
-  edge_end = len(signal)-edge_start -1
-  peak_indices = [x for x in peak_indices if (edge_start < x < edge_end)]
-  peak_values = [signal[x] for x in peak_indices]
-  max_index =peak_values.index(max(peak_values))
-  return peak_indices[max_index],peak_values[max_index]
-
+from aggregating_gates import label_axis, aggregate_single_subject
+import random
+import time
+from time_region import time_region
+from peaks_valley_swing import find_swing_stance_index, avg_std_gate_lengths, max_peak, find_lowest_valley
 
 def extract_gate_crossings(df: pd.core.frame.DataFrame, header:str, gate_crossing: float = -0.6) -> List[int]:
   '''input
@@ -95,7 +49,7 @@ def pair_gate_ends(zero_crossings: List[int], sensor: str = None, filename: str=
   return zero_pairs
 
 def check_shape_zero_crossings(zero_gd, dstream):
-  '''checks that there is a valley at all, and that there exists a 
+  '''checks that there is a valley at all, and that there exists a
   peak to the left of the valley and the right of ~30% of the gate data points'''
   passed_zeros = []
   for zero_pair in zero_gd:
@@ -112,43 +66,72 @@ def check_shape_zero_crossings(zero_gd, dstream):
       passed_zeros.append(zero_pair)
   return passed_zeros
 
-def calc_data_point_table(zero_crossing_lookup):
-  total_points = 0 
-  data_points = {}
-  for fname in list(zero_crossing_lookup.keys()):
-    data_points[fname] = {}
-    for side in ['right', 'left']:
-        zero_crossings = zero_crossing_lookup[fname][side]
-        points_p_gate = [x[1]-x[0] for x in zero_crossings]
-        points_p_gate = np.array(points_p_gate)   
-        ct_points = points_p_gate.sum()
-        data_points[fname][side] = ct_points
-        total_points+=ct_points
-  return data_points, total_points
-
-
-def calc_all_gate_crossings(metadata, data_lookup: dict, gate_crossing: float = GATE_CROSSING, gate_length_bounds: dict =None):
-  '''detects gate crossings for each leg for every file. 
+def calc_all_gate_crossings(metadata, data_lookup: dict, gate_crossing: float = GATE_CROSSING, 
+                            gate_length_bounds: dict =None, pool=None):
+  '''detects gate crossings for each leg for every file.
   creates a lookup dict that allows for looking up gate values given a filename and leg
-  saves zero crossings as tuples, not as a list, this way the tuples can be 
+  saves zero crossings as tuples, not as a list, this way the tuples can be
   filtered based on min,max gate lengths
   '''
+  if pool:
+    calc_all_gate_crossings_mp(metadata, data_lookup, pool, gate_crossing = gate_crossing, 
+                               gate_length_bounds=gate_length_bounds)
+  else: 
+    calc_all_gate_crossings_sequential(metadata, data_lookup, gate_crossing = gate_crossing, 
+                                       gate_length_bounds=gate_length_bounds)
+
+def calc_all_gate_crossings_per_file(filename, df_1, gate_crossing: float, gate_length_bounds: dict):
+  ##zero crossings are lists here
+  zero_crossings_right = extract_gate_crossings(df_1,RIGHT_AVY_HEADER, gate_crossing= gate_crossing)
+  zero_crossings_left = extract_gate_crossings(df_1,LEFT_AVY_HEADER, gate_crossing= gate_crossing)
+  ##conver zero crossings to tuples
+  zero_crossings_right = pair_gate_ends(zero_crossings_right, sensor = RIGHT_AVY_HEADER,filename = filename, gate_length_bounds=gate_length_bounds)
+  zero_crossings_left = pair_gate_ends(zero_crossings_left, sensor =LEFT_AVY_HEADER, filename = filename, gate_length_bounds=gate_length_bounds)
+  ##check that the gates have the right shape
+  zero_crossings_right = check_shape_zero_crossings(zero_crossings_right, df_1[RIGHT_AVY_HEADER].to_numpy())
+  zero_crossings_left = check_shape_zero_crossings(zero_crossings_left, df_1[LEFT_AVY_HEADER].to_numpy())
+  return zero_crossings_left, zero_crossings_right, filename
+def calc_all_gate_crossings_per_process(filename_list: List[str], data_lookup: dict, gate_crossing, gate_length_bounds):
+  zero_crossing_lookup = {}
+  for filename in filename_list:
+    df_1 = data_lookup[filename]
+    calc_all_gate_crossings_per_file(filename, df_1, gate_crossing, gate_length_bounds)
+    zero_crossing_lookup[filename]={'right':zero_crossings_right, 'left':zero_crossings_left}
+  return zero_crossing_lookup
+def calc_all_gate_crossings_mp(metadata, data_lookup: dict, pool, gate_crossing: float = GATE_CROSSING, 
+                               gate_length_bounds: dict =None):
+  print("this function is not tested")
+  return
+  start =   time.time()   
+  zero_crossing_lookup = {}
+  def add_result(result):
+    zero_crossing_lookup.update(result)
+  filename_list = metadata['filename'].to_list()
+  ct_fnames = len(filename_list)
+  ct_processes = 2
+  fnames_p_process = int(np.ceil(ct_fnames/ct_processes))
+  for pool_ind in ct_processes:
+    pool.apply_async(calc_all_gate_crossings_per_process, 
+                     args=(filename_list[pool_ind*fnames_p_process:(pool_ind+1)*fnames_p_process], 
+                     gate_crossing, gate_length_bounds), 
+                     callback = add_result)
+  time_region.track_time("calc_all_gate_crossings", time.time() - start)
+  # close the process pool
+  pool.close()
+  # wait for all tasks to finish
+  pool.join()
+  return zero_crossing_lookup
+
+def calc_all_gate_crossings_sequential(metadata, data_lookup: dict, gate_crossing: float = GATE_CROSSING, 
+                                       gate_length_bounds: dict =None):
+  start =   time.time()   
   zero_crossing_lookup = {}
   for filename in metadata['filename'].to_list():
     df_1 = data_lookup[filename]
-    ##zero crossings are lists here
-    zero_crossings_right = extract_gate_crossings(df_1,RIGHT_AVY_HEADER, gate_crossing= gate_crossing)
-    zero_crossings_left = extract_gate_crossings(df_1,LEFT_AVY_HEADER, gate_crossing= gate_crossing)
-    ##conver zero crossings to tuples
-    zero_crossings_right = pair_gate_ends(zero_crossings_right, sensor = RIGHT_AVY_HEADER,filename = filename, gate_length_bounds=gate_length_bounds)
-    zero_crossings_left = pair_gate_ends(zero_crossings_left, sensor =LEFT_AVY_HEADER, filename = filename, gate_length_bounds=gate_length_bounds)
-    ##check that the gates have the right shape
-    zero_crossings_right = check_shape_zero_crossings(zero_crossings_right, df_1[RIGHT_AVY_HEADER].to_numpy())
-    zero_crossings_left = check_shape_zero_crossings(zero_crossings_left, df_1[LEFT_AVY_HEADER].to_numpy())
-
+    zero_crossings_left, zero_crossings_right , _= calc_all_gate_crossings_per_file(filename, df_1, gate_crossing, gate_length_bounds)
     zero_crossing_lookup[filename]={'right':zero_crossings_right, 'left':zero_crossings_left}
+  time_region.track_time("calc_all_gate_crossings", time.time() - start)
   return zero_crossing_lookup
-
 
 def graph_zero_crossings(zero_crossings: List[Tuple[int]], avy_data,filename:str, save_dir: str = 'gate_crossings', window: int = 50, graph_limit: int = 20, gate_max: int = None):
   '''graph_limit : number of graphs to make
@@ -166,27 +149,23 @@ def graph_zero_crossings(zero_crossings: List[Tuple[int]], avy_data,filename:str
       if (not gate_max) or ((end-start )< gate_max):
         fig, ax = plt.subplots(ncols=3, nrows=1, figsize=(25,7))
         zero_cross_indices = [avy_data.index[zero_crossings[i][0]], avy_data.index[zero_crossings[i][1]]]
-        zero_cross_values = [avy_data.iloc[zero_crossings[i][0]],avy_data.iloc[zero_crossings[i][1]] ]        
+        zero_cross_values = [avy_data.iloc[zero_crossings[i][0]],avy_data.iloc[zero_crossings[i][1]] ]
         ax[0].plot(avy_data.iloc[end-window:end+window])
         ax[0].set_title(label='around recent zero')
         ax[0].scatter([zero_cross_indices[1]],[zero_cross_values[1]]  , color='red')
         ax[1].plot(avy_data.iloc[start:end])
-        ax[1].set_title(label='prev 1 cycle')   
+        ax[1].set_title(label='prev 1 cycle')
         ax[1].scatter(zero_cross_indices,zero_cross_values  , color='red')
         ax[2].plot(avy_data.iloc[zero_crossings[i-max_gates_display][1]:end])
         ax[2].scatter(zero_cross_indices,zero_cross_values  , color='red')
         ax[2].set_title(label='prev 3 cycles')
-        ax[2].scatter(zero_cross_indices,zero_cross_values  , color='red') 
+        ax[2].scatter(zero_cross_indices,zero_cross_values  , color='red')
         fig.suptitle("graph " + "{:,}".format(graph_limit) + ". "+filename+" inspecting row "+"{:,}".format(end) + ". gate size "+str(end-start))
         fig.savefig(os.path.join(save_dir,str(graph_limit)+'.png'))
         graph_limit -=1
         if graph_limit==0:
           break
 
-def avg_std_gate_lengths(zero_crossings: List[Tuple[int]]):
-  points_p_gate = [x[1]-x[0] for x in zero_crossings]
-  points_p_gate = np.array(points_p_gate)
-  return  points_p_gate.mean() , points_p_gate.std(), points_p_gate.max(), points_p_gate.min()  
 
 def hist_gate_lengths(zero_crossing: List[Tuple[int]]):
   avg, std , m, n = avg_std_gate_lengths(zero_crossing)
@@ -233,22 +212,24 @@ def graphing_gate_crossing_thresholds(stats_df: pd.core.frame.DataFrame, save_di
       ax[i].set_xlabel("gate crossing threshold")
       ax[i].set_ylabel("gate size (data points)")
       title = column_to_graph+ ' '+COLUMNS_TO_AREA[column_to_graph]
-      _= ax[i].set_title( title+ ' ' + inout)     
-      fig.savefig(os.path.join(save_dir_gate_lengths,title.replace("/", '-')+'.png'))
-
-def stats_gate_lengths_by_file(metadata,data_lookup,  df_cols: List[str], save_dir_gate_lengths: str, fname_gate_length_file: str = "per_file", MAX_STD: float = 2, zero_crossing_lookup: dict =None):
-  '''for each of the two main sensors, create a csv with the gate length 
+      _= ax[i].set_title( title+ ' ' + inout)
+      fig.savefig(os.path.join(save_dir_gate_lengths,title.replace(os.path.sep, '-').replace('/', '-')+'.png'))
+def stats_gate_lengths_by_file(metadata,data_lookup,  df_cols: List[str], save_dir_gate_lengths: str, 
+        fname_gate_length_file: str = "per_file", MAX_STD: float = 2, zero_crossing_lookup: dict =None):
+  '''for each of the two main sensors, create a csv with the gate length
     stats for each file, also track the thresholds for each file of what
     defines an outlier'''
+  start = time.time()
+  assert os.path.exists(save_dir_gate_lengths), f"save dir should exist {save_dir_gate_lengths}"
   filter_to_gate_thresh = {}
   for filename in metadata['filename']:
     filter_to_gate_thresh[filename] = {}
   print("gate crossing used", GATE_CROSSING)
   if not zero_crossing_lookup:
-    zero_crossing_lookup=calc_all_gate_crossings(metadata,data_lookup, gate_crossing = GATE_CROSSING)
+    zero_crossing_lookup=calc_all_gate_crossings(metadata, gate_crossing = GATE_CROSSING)
   for sensor_cols in [RIGHT_AVY_HEADER, LEFT_AVY_HEADER]:
     df_per_file = pd.DataFrame([], columns =df_cols )
-    per_filename =fname_gate_length_file+'_'+ sensor_cols.replace("/", '-')+".csv"  
+    per_filename =fname_gate_length_file+'_'+ sensor_cols.replace('/', '-')+".csv"
     for i, inout in enumerate(['indoors', 'outdoors']):
       for x in metadata[metadata['inout']==inout].groupby(by=['subjectID', 'pace']):
         df_trials=x[1]
@@ -260,11 +241,10 @@ def stats_gate_lengths_by_file(metadata,data_lookup,  df_cols: List[str], save_d
           filter_to_gate_thresh[filename][sensor_cols] = (avg-MAX_STD*std, avg+MAX_STD*std)
           df_per_file = pd.concat([df_per_file, pd.DataFrame([row], columns=df_cols)])
     df_per_file.sort_values('std',inplace=True, ignore_index=True )
-    save_fname = os.path.join(save_dir_gate_lengths,per_filename)
-    df_per_file.to_csv(save_fname, index=False)
+    df_per_file.to_csv(os.path.join(save_dir_gate_lengths,per_filename), index=False)
   print("saving file", fname_gate_length_file, " with gate length stats per file")
+  time_region.track_time("stats_gate_lengths_by_file", time.time() - start)
   return df_per_file, filter_to_gate_thresh
-
 
 def plot_gate_lengths_p_subject(filename,save_dir_gate_lengths):
   df_gate_lengths = pd.read_csv(os.path.join(save_dir_gate_lengths,filename))
@@ -272,7 +252,7 @@ def plot_gate_lengths_p_subject(filename,save_dir_gate_lengths):
   print(df_gate_lengths['avg gate length (data points)'].describe())
   print("\nstd of gate lengths (data Points)")
   print(df_gate_lengths['std'].describe())
-  df_gate_lengths['std/avg'] =df_gate_lengths.apply(lambda x: x['std']/x['avg gate length (data points)'], axis=1) 
+  df_gate_lengths['std/avg'] =df_gate_lengths.apply(lambda x: x['std']/x['avg gate length (data points)'], axis=1)
   print("\nstats of std/avg")
   percentiles = df_gate_lengths['std/avg'].describe()
   print(percentiles)
@@ -296,3 +276,61 @@ def plot_gate_lengths_p_subject(filename,save_dir_gate_lengths):
   _ = ax[1].set_title("75 Percentile outliers")
   fig.savefig(os.path.join(save_dir_gate_lengths,"std-avg_outlier_graph_"+df_gate_lengths['area'].iloc[0]+".png"))
   return df_gate_lengths
+
+def continuous_gate_crossings(file):
+  ##raw data
+  ##finding gate crossings without butterworth
+  df_raw = load_data(file, low_pass = False)
+  zero_crossings_right = extract_gate_crossings(df_raw,RIGHT_AVY_HEADER, gate_crossing= GATE_CROSSING)
+  zero_crossings_left = extract_gate_crossings(df_raw,LEFT_AVY_HEADER, gate_crossing= GATE_CROSSING)
+  ##conver zero crossings to tuples
+  zero_crossings_right = pair_gate_ends(zero_crossings_right, sensor = RIGHT_AVY_HEADER,filename = file, gate_length_bounds=None)
+  zero_crossings_left = pair_gate_ends(zero_crossings_left, sensor =LEFT_AVY_HEADER, filename = file, gate_length_bounds=None)
+  ##check that the gates have the right shape
+  zero_crossings_right = check_shape_zero_crossings(zero_crossings_right, df_raw[RIGHT_AVY_HEADER].values)
+  zero_crossings_left = check_shape_zero_crossings(zero_crossings_left, df_raw[LEFT_AVY_HEADER].values)
+  return zero_crossings_left,zero_crossings_right , df_raw
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
