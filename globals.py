@@ -1,15 +1,20 @@
 
+all_motion_capture_columns = ["Rthigh_acc_x","Rthigh_acc_y","Rthigh_acc_z","Rthigh_vel_x","Rthigh_vel_y","Rthigh_vel_z","Lthigh_acc_x","Lthigh_acc_y","Lthigh_acc_z","Lthigh_vel_x","Lthigh_vel_y","Lthigh_vel_z","Rshank_acc_x","Rshank_acc_y","Rshank_acc_z","Rshank_vel_x","Rshank_vel_y","Rshank_vel_z","Lshank_acc_x","Lshank_acc_y","Lshank_acc_z","Lshank_vel_x","Lshank_vel_y","Lshank_vel_z","R_FP","L_FP"]
 RIGHT_AVY_HEADER = 'Angular Velocity Y (rad/s).2'
 LEFT_AVY_HEADER = 'Angular Velocity Y (rad/s).3'
 COLUMNS_TO_GRAPH = ['Acceleration Y (m/s^2)',  'Angular Velocity Y (rad/s)',##right thigh
                     'Acceleration Y (m/s^2).1','Angular Velocity Y (rad/s).1',##left thigh
                     'Acceleration Y (m/s^2).2', RIGHT_AVY_HEADER,##right shank
                     'Acceleration Y (m/s^2).3',LEFT_AVY_HEADER ]##left shank
+
+MOTION_CAPTURE_COLS = []
 tmp = []
 for val in COLUMNS_TO_GRAPH:
   tmp.append(val.replace('Y','X'))
   tmp.append(val.replace('Y','Z'))
 COLUMNS_TO_GRAPH.extend(tmp)
+
+
 
 COLUMNS_TO_AREA = {  'Acceleration Y (m/s^2)':'right thigh',  'Angular Velocity Y (rad/s)':'right thigh',##right thigh
                     'Acceleration Y (m/s^2).1':'left thigh','Angular Velocity Y (rad/s).1':'left thigh',##left thigh
@@ -59,4 +64,3 @@ import matplotlib as mpl'''
 DATA_DIR = 'raw_data'#'Text_File/Master_Data--TD_1-30_CSVFiles/Subjects_1-30-inw1_through_osw1'
 GATE_CROSSING = -0.3
 FREQUENCY = 128
-
