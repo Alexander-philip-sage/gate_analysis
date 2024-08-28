@@ -7,6 +7,8 @@ import glob
 from scipy.signal import correlate, find_peaks, butter, sosfilt
 import random
 import matplotlib.pyplot as plt
+from time_region import time_region
+import time
 def extract_trial_data(filename, verbose=False):
   end_part = filename.split('_')[1].replace('.csv','')
   subjectID_str = ''.join([x for x in end_part[:3] if x.isdigit()])
@@ -44,6 +46,7 @@ def check_indoor_and_outdoor(metadata):
   return metadata[~metadata.subjectID.isin(remove_subjectID)]
 
 def load_metadata(PACE, DATA_DIR):
+  start = time.time()
   ##load all data files
   gate_files = [os.path.basename(x) for x in glob.glob(os.path.join(DATA_DIR,"*.csv"))]
   metadata_list = []
@@ -57,6 +60,7 @@ def load_metadata(PACE, DATA_DIR):
   ##checks and removes incomplete data
   metadata = check_indoor_and_outdoor(metadata)
   metadata.reset_index(inplace=True, drop=True)
+  time_region.track_time("load_metadata", time.time()- start)
   return metadata
 
 def remove_ends_data(df_p,remove_seconds: float =5, verbose=False):
@@ -85,15 +89,32 @@ def low_pass_butterworth(df_b, N: int=4, Wn: float = 20):
       dict_df[col] = df_b[col].to_numpy()
   return pd.DataFrame(dict_df)
 
-
-def load_data(filename:str, low_pass: bool = True, N: int=4, Wn:float=20):
-  '''takes in only the filename, not the path'''
+def load_motion_capture_data(filename:str, low_pass: bool = True, N: int=4, Wn:float=20):
+  '''takes in only the filename, not the path. this function is modified to accept 
+  the motion capture format'''
+  start =  time.time()
   df_a = pd.read_csv(os.path.join(DATA_DIR, filename), usecols=COLUMNS_TO_GRAPH)
   df_in = remove_ends_data(df_a)
   if low_pass:
-    return low_pass_butterworth(df_in, N=N, Wn=Wn)
+    ret =  low_pass_butterworth(df_in, N=N, Wn=Wn)
+    time_region.track_time("load_motion_capture_data", time.time() - start)
+    return ret
   else:
-     return df_in
+    time_region.track_time("load_motion_capture_data", time.time() - start)
+    return df_in
+
+def load_data(filename:str, low_pass: bool = True, N: int=4, Wn:float=20):
+  '''takes in only the filename, not the path'''
+  start =  time.time()
+  df_a = pd.read_csv(os.path.join(DATA_DIR, filename), usecols=COLUMNS_TO_GRAPH)
+  df_in = remove_ends_data(df_a)
+  if low_pass:
+    ret =  low_pass_butterworth(df_in, N=N, Wn=Wn)
+    time_region.track_time("load_data", time.time() - start)
+    return ret
+  else:
+    time_region.track_time("load_data", time.time() - start)
+    return df_in
   
 def select_random_df(metadata,data_lookup ):
   subjectID_list = metadata['subjectID'].unique()

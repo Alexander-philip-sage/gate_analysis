@@ -13,7 +13,8 @@ from load_data import load_data,  load_metadata
 from similarity import signal_similarity, signal_similarity_per_subject_indoor_outdoor, signal_similarity_per_subject_combined_invsout
 from similarity import signal_similarity_per_subject_left_right, signal_sim_comb_legs, lr_control_ivo
 import pandas as pd
-
+from time_region import time_region
+import multiprocessing as mp
 def run_everything1(metadata,data_lookup,  zero_crossing_lookup, SAVE_DIR):
   print("run_everything1", SAVE_DIR)
   save_dir = os.path.join(SAVE_DIR, "graph_each_subject_each_sensor")
@@ -165,7 +166,8 @@ def run_cadence_filtered_everything():
 
 def run_everything():
   ##load all data and filter it
-  base_dir = os.path.join("2023.09.29")
+  pool = mp.Pool()
+  base_dir = os.path.join("results","2023.09.29")
   if not os.path.exists(base_dir):
     os.mkdir(base_dir)
   for PACE in [ 'fast', 'normal','slow']:
@@ -176,16 +178,16 @@ def run_everything():
     start = datetime.datetime.now()
     metadata=load_metadata(PACE, DATA_DIR)
     print("paces found", metadata['pace'].unique())
-    print("metadata took", (datetime.datetime.now()-start).total_seconds(), "to run")
+    print("load_metadata took", (datetime.datetime.now()-start).total_seconds(), "to run")
 
     start = datetime.datetime.now()
     data_lookup = {}
     for filename in metadata['filename']:
       data_lookup[filename]=load_data(filename)
-    print("data_lookup took", (datetime.datetime.now()-start).total_seconds(), "to run")
+    print("load_data took", (datetime.datetime.now()-start).total_seconds(), "to run")
     start = datetime.datetime.now()
     ##doesn't save anything
-    zero_crossing_lookup =calc_all_gate_crossings(metadata, data_lookup, GATE_CROSSING)
+    zero_crossing_lookup =calc_all_gate_crossings(metadata, data_lookup, GATE_CROSSING, pool=pool)
     print("zero_crossing_lookup took", (datetime.datetime.now()-start), "to run")
     save_dir_gate_lengths = os.path.join(SAVE_DIR, "stats_of_gate_lengths")
     if not os.path.exists(save_dir_gate_lengths):
@@ -193,10 +195,12 @@ def run_everything():
     start = datetime.datetime.now()
     df_gate_stats_cols = ['sensor','area', 'in-out', 'filename','trial', 'subjectID' ,'avg gate length (data points)', 'std', 'max', 'min', 'data points per file', 'vertical_gate_crossing' ]
     ##saves data
-    df_per_file, filter_to_gate_thresh = stats_gate_lengths_by_file(metadata,data_lookup, df_gate_stats_cols, save_dir_gate_lengths, MAX_STD= 2, zero_crossing_lookup=zero_crossing_lookup)
+    df_per_file, filter_to_gate_thresh = stats_gate_lengths_by_file(metadata,data_lookup, df_gate_stats_cols, 
+                              save_dir_gate_lengths, MAX_STD= 2, zero_crossing_lookup=zero_crossing_lookup)
     print("filtering bad gates took", (datetime.datetime.now()-start).total_seconds(), "to run")
     start = datetime.datetime.now()
-    zero_crossing_lookup=calc_all_gate_crossings(metadata, data_lookup, gate_crossing = GATE_CROSSING, gate_length_bounds= filter_to_gate_thresh)
+    zero_crossing_lookup=calc_all_gate_crossings(metadata, data_lookup, gate_crossing = GATE_CROSSING, 
+                                                 gate_length_bounds= filter_to_gate_thresh)
     ##re-calculate the stats of the gate lengths now that the filter has been applied
     df_gate_stats_cols = ['sensor','area', 'in-out', 'filename','trial', 'subjectID' ,'avg gate length (data points)', 'std', 'max', 'min', 'data points per file', 'vertical_gate_crossing' ]
     df_per_file_filtered, _ = stats_gate_lengths_by_file(metadata,data_lookup, df_gate_stats_cols, save_dir_gate_lengths,
@@ -229,5 +233,8 @@ def run_everything():
     re_format_paired_comparison(base_dir)
     re_format_distance_sim(base_dir)
     re_format_poincare_sim_stats(base_dir)
-
+    print("quitting after first pace")
+    time_region.log_summary()
+    return
+  
 run_everything()
